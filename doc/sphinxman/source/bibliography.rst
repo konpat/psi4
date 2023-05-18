@@ -708,3 +708,13 @@ Bibliography
    *J. Chem. Phys.* **153**, 244115 (2020).
    https://doi.org/10.1063/5.0035811
 
+.. [Luu:2023:356]
+   D. Luu and K. Patkowski,
+   *J. Phys. Chem. A* **127**, 356-377 (2023).
+   https://doi.org/10.1021/acs.jpca.2c06465
+
+.. [Weigend:2002:4285]
+   F. Weigend,
+   *Phys. Chem. Chem. Phys.* **4**, 4285-4291 (2002).
+   https://doi.org/10.1039/B204199P
+
