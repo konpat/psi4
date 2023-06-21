@@ -59,9 +59,18 @@ MemDFJK::MemDFJK(std::shared_ptr<BasisSet> primary, std::shared_ptr<BasisSet> au
     common_init();
 }
 
+MemDFJK::MemDFJK(double eta, std::shared_ptr<BasisSet> primary, std::shared_ptr<BasisSet> auxiliary,
+    Options& options) : JK(primary), auxiliary_(auxiliary), options_(options) {
+
+    eta_ = eta;
+    common_init(eta_);
+}
 MemDFJK::~MemDFJK() {}
 
 void MemDFJK::common_init() { dfh_ = std::make_shared<DFHelper>(primary_, auxiliary_); }
+
+void MemDFJK::common_init(double eta) { eta_ = eta; dfh_ = std::make_shared<DFHelper>(eta_, primary_, auxiliary_); }
+
 size_t MemDFJK::memory_estimate() {
     dfh_->set_nthreads(omp_nthread_);
     dfh_->set_schwarz_cutoff(cutoff_);
@@ -80,6 +89,36 @@ void MemDFJK::preiterations() {
     dfh_->set_memory(memory_ - memory_overhead());
     dfh_->set_do_wK(do_wK_);
     dfh_->set_omega(omega_);
+    if (do_wK_) { 
+        dfh_->set_wcombine(wcombine_); 
+    } else {
+        dfh_->set_wcombine(false);
+        wcombine_ = false;
+    }
+    dfh_->set_omega_alpha(omega_alpha_);
+    dfh_->set_omega_beta(omega_beta_);
+
+    // we need to prepare the AOs here, and that's it.
+    // DFHelper takes care of all the housekeeping
+
+    dfh_->initialize();
+}
+
+void MemDFJK::preiterations(double eta) {
+    eta_ = eta;
+    // Initialize calls your derived class's preiterations member
+    // knobs are set and state variables assigned
+
+    // use previously set state variables to dfh instance
+    dfh_->set_nthreads(omp_nthread_);
+    dfh_->set_schwarz_cutoff(cutoff_);
+    dfh_->set_method("STORE");
+    dfh_->set_fitting_condition(condition_);
+    dfh_->set_memory(memory_ - memory_overhead());
+    dfh_->set_do_wK(do_wK_);
+    dfh_->set_omega(omega_);
+
+    dfh_->set_eta(eta_);
     if (do_wK_) { 
         dfh_->set_wcombine(wcombine_); 
     } else {

@@ -1701,6 +1701,28 @@ std::vector<SharedMatrix> MintsHelper::ao_multipole_potential(int order, const s
     return ret;
 }
 
+std::vector<SharedMatrix> MintsHelper::ao_multipole_potential_reg(double eta, int order, int deriv) {
+    SharedMatrix potential_mat =
+        std::make_shared<Matrix>("AO-basis Potential Ints", basisset_->nbf(), basisset_->nbf());
+    std::vector<SharedMatrix> ret;
+    ret.push_back(potential_mat);
+
+    std::shared_ptr<OneBodyAOInt> ints(integral_->ao_multipole_potential_reg(eta, order, deriv));
+    ints->compute(eta, ret);
+    return ret;
+}
+
+std::vector<SharedMatrix> MintsHelper::ao_multipole_potential_erf(double omega, int order, int deriv) {
+    SharedMatrix potential_mat =
+        std::make_shared<Matrix>("AO-basis Potential Ints", basisset_->nbf(), basisset_->nbf());
+    std::vector<SharedMatrix> ret;
+    ret.push_back(potential_mat);
+
+    std::shared_ptr<OneBodyAOInt> ints(integral_->ao_multipole_potential_erf(omega, order, deriv));
+    ints->compute_erf(omega, ret);
+    return ret;
+}
+
 std::vector<SharedMatrix> MintsHelper::electric_field(const std::vector<double> &origin, int deriv) {
     if (origin.size() != 3) throw PSIEXCEPTION("Origin argument must have length 3.");
     Vector3 v3origin(origin[0], origin[1], origin[2]);

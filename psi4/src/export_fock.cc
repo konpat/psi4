@@ -46,6 +46,10 @@ namespace py = pybind11;
 using namespace pybind11::literals;
 
 void export_fock(py::module &m) {
+
+    typedef void (JK::*compute_no_args)();
+    typedef void (JK::*compute_one_arg)(double);
+
     py::class_<JK, std::shared_ptr<JK>>(m, "JK", "docstring")
         .def_static("build_JK",
                     [](std::shared_ptr<BasisSet> basis, std::shared_ptr<BasisSet> aux) {
@@ -68,6 +72,9 @@ void export_fock(py::module &m) {
         .def("set_do_wK", &JK::set_do_wK)
         .def("set_omega", &JK::set_omega, "Dampening term for range separated DFT", "omega"_a)
         .def("get_omega", &JK::get_omega, "Dampening term for range separated DFT")
+        .def("set_eta", &JK::set_eta, "Dampening term for range separated DFT", "eta"_a)
+        .def("get_eta", &JK::get_eta, "Dampening term for range separated DFT")
+
         .def("set_wcombine", &JK::set_wcombine, "Are Exchange terms in one Matrix", "wcombine"_a )
         .def("get_wcombine", &JK::get_wcombine, "Are Exchange terms in one Matrix", "wcombine")
         .def("set_omega_alpha", &JK::set_omega_alpha, "Weight for HF exchange term in range-separated DFT", "alpha"_a)
@@ -76,7 +83,9 @@ void export_fock(py::module &m) {
         .def("get_omega_beta", &JK::get_omega_beta, "Weight for dampened exchange term in range-separated DFT")
         .def("set_early_screening", &JK::set_early_screening, "Use severe screening techniques? Useful in early SCF iterations.", "early_screening"_a)
         .def("get_early_screening", &JK::get_early_screening, "Use severe screening techniques? Useful in early SCF iterations.")
-        .def("compute", &JK::compute)
+        .def("compute", compute_no_args(&JK::compute))
+        .def("compute", compute_one_arg(&JK::compute),"eta"_a)
+
         .def("finalize", &JK::finalize)
         .def("C_clear",
              [](JK &jk) {
@@ -162,8 +171,12 @@ void export_fock(py::module &m) {
     typedef SharedMatrix (DFHelper::*tensor_access3)(std::string, std::vector<size_t>, std::vector<size_t>,
                                                      std::vector<size_t>);
 
+    typedef void (DFHelper::*transform_no_args)();
+    typedef void (DFHelper::*transform_one_arg)(double);
     py::class_<DFHelper, std::shared_ptr<DFHelper>>(m, "DFHelper", "docstring")
         .def(py::init<std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet> >())
+        .def(py::init<double, std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet> >())
+
         .def("set_memory", &DFHelper::set_memory)
         .def("get_memory", &DFHelper::get_memory)
         .def("set_method", &DFHelper::set_method)
@@ -182,7 +195,8 @@ void export_fock(py::module &m) {
         .def("initialize", &DFHelper::initialize)
         .def("print_header", &DFHelper::print_header)
         .def("add_transformation", &DFHelper::add_transformation, "name"_a, "key1"_a, "key2"_a, "order"_a = "Qpq")
-        .def("transform", &DFHelper::transform)
+        .def("transform", transform_no_args(&DFHelper::transform))
+        .def("transform", transform_one_arg(&DFHelper::transform), "eta"_a)
         .def("clear_spaces", &DFHelper::clear_spaces)
         .def("clear_all", &DFHelper::clear_all)
         .def("transpose", &DFHelper::transpose)
@@ -191,6 +205,7 @@ void export_fock(py::module &m) {
         .def("get_tensor_shape", &DFHelper::get_tensor_shape)
         .def("get_tensor", take_string(&DFHelper::get_tensor))
         .def("get_tensor", tensor_access3(&DFHelper::get_tensor));
+
 
     py::class_<MemDFJK, std::shared_ptr<MemDFJK>, JK>(m, "MemDFJK", "docstring")
         .def("dfh", &MemDFJK::dfh, "Return the DFHelper object.");

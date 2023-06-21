@@ -183,6 +183,14 @@ std::unique_ptr<OneBodyAOInt> IntegralFactory::ao_multipole_potential(int order,
     return  std::make_unique<MultipolePotentialInt>(spherical_transforms_, bs1_, bs2_, order, deriv);
 }
 
+std::unique_ptr<OneBodyAOInt> IntegralFactory::ao_multipole_potential_reg(double eta, int order, int deriv) {
+    return  std::make_unique<MultipolePotentialInt_reg>(eta, spherical_transforms_, bs1_, bs2_, order, deriv);
+}
+
+std::unique_ptr<OneBodyAOInt> IntegralFactory::ao_multipole_potential_erf(double omega, int order, int deriv) {
+    return  std::make_unique<MultipolePotentialInt_erf>(omega, spherical_transforms_, bs1_, bs2_, order, deriv);
+}
+
 std::unique_ptr<OneBodySOInt> IntegralFactory::so_multipoles(int order, int deriv) {
     std::shared_ptr<OneBodyAOInt> ao_int(ao_multipoles(order, deriv));
     return  std::make_unique<OneBodySOInt>(ao_int, this);

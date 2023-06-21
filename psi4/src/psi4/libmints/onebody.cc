@@ -248,6 +248,26 @@ void OneBodyAOInt::compute_pair(const libint2::Shell &s1, const libint2::Shell &
     buffer_ = const_cast<double *>(buffers_[0]);
 }
 
+void OneBodyAOInt::compute_pair_reg(double eta, const libint2::Shell &s1, const libint2::Shell &s2) {
+ //   outfile->Printf(" test onebody reg \n");
+    engine0_->compute(s1, s2);
+    //engine0_->compute(eta, s1, s2);
+    for (int chunk = 0; chunk < nchunk(); chunk++) {
+        buffers_[chunk] = engine0_->results()[chunk];
+    }
+    buffer_ = const_cast<double *>(buffers_[0]);
+}
+
+void OneBodyAOInt::compute_pair_erf(double omega, const libint2::Shell &s1, const libint2::Shell &s2) {
+  //  outfile->Printf(" test onebody reg \n");
+    engine0_->compute(s1, s2);
+    //engine0_->compute(omega, s1, s2);
+    for (int chunk = 0; chunk < nchunk(); chunk++) {
+        buffers_[chunk] = engine0_->results()[chunk];
+    }
+    buffer_ = const_cast<double *>(buffers_[0]);
+}
+
 void OneBodyAOInt::compute_pair_deriv1(const libint2::Shell &s1, const libint2::Shell &s2) {
     engine1_->compute(s1, s2);
     set_chunks(engine1_->results().size());
@@ -347,10 +367,193 @@ void OneBodyAOInt::compute(std::vector<SharedMatrix> &result) {
     }
 }
 
+void OneBodyAOInt::compute(double eta, SharedMatrix &result) {
+    const auto bs1_equiv_bs2 = (bs1_ == bs2_);
+
+    double sign = is_antisymmetric() ? -1 : 1;
+//    outfile->Printf("In special OneBodyAOInt->compute 1\n");
+    for (auto pair : shellpairs_) {
+        int p1 = pair.first;
+        int p2 = pair.second;
+
+        int ni = bs1_->shell(p1).nfunction();
+        int nj = bs2_->shell(p2).nfunction();
+        int i_offset = bs1_->shell_to_basis_function(p1);
+        int j_offset = bs2_->shell_to_basis_function(p2);
+
+        compute_shell_reg(eta, p1, p2);
+
+        const double *location = buffers_[0];
+        for (int p = 0; p < ni; ++p) {
+            for (int q = 0; q < nj; ++q) {
+                result->add(0, i_offset + p, j_offset + q, *location);
+                if (bs1_equiv_bs2 && p1 != p2) {
+                    result->add(0, j_offset + q, i_offset + p, (*location) * sign);
+                }
+                location++;
+            }
+        }
+    }
+//    outfile->Printf("Out of special OneBodyAOInt->compute 1\n");
+}
+
+void OneBodyAOInt::compute(double eta, std::vector<SharedMatrix> &result) {
+    // Do not worry about zeroing out result
+    int ns1 = bs1_->nshell();
+    int ns2 = bs2_->nshell();
+    const auto bs1_equiv_bs2 = (bs1_ == bs2_);
+ //   outfile->Printf("In special OneBodyAOInt->compute 2\n");
+
+    // Check the length of result, must be chunk
+    // There not an easy way of checking the size now.
+    if (result.size() != (size_t)nchunk_) {
+        outfile->Printf("result length = %ld, nchunk = %d\n", result.size(), nchunk_);
+        throw SanityCheckError("OneBodyInt::compute(result): result incorrect length.", __FILE__, __LINE__);
+    }
+
+    // Check the individual matrices, we can only handle nirrep() == 1
+    for (int chunk = 0; chunk < result.size(); ++chunk) {
+        const auto a = result[chunk];
+        if (a->nirrep() != 1) {
+            throw SanityCheckError("OneBodyInt::compute(result): one or more of the matrices given has symmetry.",
+                                   __FILE__, __LINE__);
+        }
+    }
+
+    double sign = is_antisymmetric() ? -1 : 1;
+    for (const auto &pair : shellpairs_) {
+        int p1 = pair.first;
+        int p2 = pair.second;
+
+        const auto &s1 = bs1_->l2_shell(p1);
+        const auto &s2 = bs2_->l2_shell(p2);
+        int ni = bs1_->shell(p1).nfunction();
+        int nj = bs2_->shell(p2).nfunction();
+        int i_offset = bs1_->shell_to_basis_function(p1);
+        int j_offset = bs2_->shell_to_basis_function(p2);
+
+        // Compute the shell
+        compute_pair_reg(eta, s1, s2);
+
+        // For each integral that we got put in its contribution
+        for (int r = 0; r < nchunk_; ++r) {
+            const double *location = buffers_[r];
+            for (int p = 0; p < ni; ++p) {
+                for (int q = 0; q < nj; ++q) {
+                    result[r]->add(0, i_offset + p, j_offset + q, *location);
+                    if (bs1_equiv_bs2 && p1 != p2) {
+                        result[r]->add(0, j_offset + q, i_offset + p, *location * sign);
+                    }
+                    location++;
+                }
+            }
+        }
+    }
+ //   outfile->Printf("Out of special OneBodyAOInt->compute 2\n");
+}
+
+void OneBodyAOInt::compute_erf(double omega, SharedMatrix &result) {
+    const auto bs1_equiv_bs2 = (bs1_ == bs2_);
+
+    double sign = is_antisymmetric() ? -1 : 1;
+ //   outfile->Printf("In special OneBodyAOInt->compute 1\n");
+    for (auto pair : shellpairs_) {
+        int p1 = pair.first;
+        int p2 = pair.second;
+
+        int ni = bs1_->shell(p1).nfunction();
+        int nj = bs2_->shell(p2).nfunction();
+        int i_offset = bs1_->shell_to_basis_function(p1);
+        int j_offset = bs2_->shell_to_basis_function(p2);
+
+        compute_shell_erf(omega, p1, p2);
+
+        const double *location = buffers_[0];
+        for (int p = 0; p < ni; ++p) {
+            for (int q = 0; q < nj; ++q) {
+                result->add(0, i_offset + p, j_offset + q, *location);
+                if (bs1_equiv_bs2 && p1 != p2) {
+                    result->add(0, j_offset + q, i_offset + p, (*location) * sign);
+                }
+                location++;
+            }
+        }
+    }
+ //   outfile->Printf("Out of special OneBodyAOInt->compute 1\n");
+}
+
+void OneBodyAOInt::compute_erf(double omega, std::vector<SharedMatrix> &result) {
+    // Do not worry about zeroing out result
+    int ns1 = bs1_->nshell();
+    int ns2 = bs2_->nshell();
+    const auto bs1_equiv_bs2 = (bs1_ == bs2_);
+ //   outfile->Printf("In special OneBodyAOInt->compute 2\n");
+
+    // Check the length of result, must be chunk
+    // There not an easy way of checking the size now.
+    if (result.size() != (size_t)nchunk_) {
+        outfile->Printf("result length = %ld, nchunk = %d\n", result.size(), nchunk_);
+        throw SanityCheckError("OneBodyInt::compute(result): result incorrect length.", __FILE__, __LINE__);
+    }
+
+    // Check the individual matrices, we can only handle nirrep() == 1
+    for (int chunk = 0; chunk < result.size(); ++chunk) {
+        const auto a = result[chunk];
+        if (a->nirrep() != 1) {
+            throw SanityCheckError("OneBodyInt::compute(result): one or more of the matrices given has symmetry.",
+                                   __FILE__, __LINE__);
+        }
+    }
+
+    double sign = is_antisymmetric() ? -1 : 1;
+    for (const auto &pair : shellpairs_) {
+        int p1 = pair.first;
+        int p2 = pair.second;
+
+        const auto &s1 = bs1_->l2_shell(p1);
+        const auto &s2 = bs2_->l2_shell(p2);
+        int ni = bs1_->shell(p1).nfunction();
+        int nj = bs2_->shell(p2).nfunction();
+        int i_offset = bs1_->shell_to_basis_function(p1);
+        int j_offset = bs2_->shell_to_basis_function(p2);
+
+        // Compute the shell
+        compute_pair_erf(omega, s1, s2);
+
+        // For each integral that we got put in its contribution
+        for (int r = 0; r < nchunk_; ++r) {
+            const double *location = buffers_[r];
+            for (int p = 0; p < ni; ++p) {
+                for (int q = 0; q < nj; ++q) {
+                    result[r]->add(0, i_offset + p, j_offset + q, *location);
+                    if (bs1_equiv_bs2 && p1 != p2) {
+                        result[r]->add(0, j_offset + q, i_offset + p, *location * sign);
+                    }
+                    location++;
+                }
+            }
+        }
+    }
+ //   outfile->Printf("Out of special OneBodyAOInt->compute 2\n");
+}
 void OneBodyAOInt::compute_shell(int sh1, int sh2) {
     const auto &s1 = bs1_->l2_shell(sh1);
     const auto &s2 = bs2_->l2_shell(sh2);
     compute_pair(s1, s2);
+}
+
+void OneBodyAOInt::compute_shell_reg(double eta, int sh1, int sh2) {
+   // outfile->Printf("test compute shell reg \n");
+    const auto &s1 = bs1_->l2_shell(sh1);
+    const auto &s2 = bs2_->l2_shell(sh2);
+    compute_pair_reg(eta_, s1, s2);
+}
+
+void OneBodyAOInt::compute_shell_erf(double omega, int sh1, int sh2) {
+  //  outfile->Printf("test compute shell reg \n");
+    const auto &s1 = bs1_->l2_shell(sh1);
+    const auto &s2 = bs2_->l2_shell(sh2);
+    compute_pair_erf(omega_, s1, s2);
 }
 
 void OneBodyAOInt::compute_shell_deriv1(int sh1, int sh2) {

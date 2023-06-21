@@ -55,6 +55,7 @@
 #include "psi4/libpsi4util/process.h"
 #include "psi4/libqt/qt.h"
 #include "psi4/libmints/mintshelper.h"
+#include "psi4/libmints/multipolepotential.h"
 
 #include "local2.h"
 
@@ -575,6 +576,13 @@ void FISAPT::nuclear() {
     std::shared_ptr<PotentialInt> Vint;
     Vint = std::shared_ptr<PotentialInt>(static_cast<PotentialInt*>(Vfact->ao_potential().release()));
 
+    outfile->Printf("  nuclear integral test1 \n\n");
+
+    std::shared_ptr<MultipolePotentialInt_reg> Vint_lr;
+    Vint_lr = std::shared_ptr<MultipolePotentialInt_reg>(static_cast<MultipolePotentialInt_reg*>(Vfact->ao_multipole_potential_reg(options_.get_double("ETA"),0.0).release()));
+
+    outfile->Printf("  nuclear integral test2 \n\n");
+
     // => Dipole Integrals, Needed for Testing the Dipole Magnitude <= //
 
     std::shared_ptr<OneBodyAOInt> dipole(Vfact->ao_dipole());
@@ -607,6 +615,14 @@ void FISAPT::nuclear() {
     matrices_["VA"] = std::make_shared<Matrix>("VA", nm, nm);
     Vint->compute(matrices_["VA"]);
 
+    outfile->Printf("  nuclear integral test3 \n\n");
+    Vint_lr->set_charge_field(Zxyz);
+    outfile->Printf("  nuclear integral test4 \n\n");
+    matrices_["VA_lr"] = std::make_shared<Matrix>("VA_lr", nm, nm);
+    Vint_lr->compute(options_.get_double("ETA"), matrices_["VA_lr"]);
+
+    outfile->Printf("  nuclear integral test5 \n\n");
+
     // > B < //
 
     double* ZBp = vectors_["ZB"]->pointer();
@@ -617,6 +633,11 @@ void FISAPT::nuclear() {
 
     matrices_["VB"] = std::make_shared<Matrix>("VB", nm, nm);
     Vint->compute(matrices_["VB"]);
+
+    Vint_lr->set_charge_field(Zxyz);
+
+    matrices_["VB_lr"] = std::make_shared<Matrix>("VB_lr", nm, nm);
+    Vint_lr->compute(options_.get_double("ETA"), matrices_["VB_lr"]);
 
     // > C < //
 
@@ -629,6 +650,11 @@ void FISAPT::nuclear() {
     matrices_["VC"] = std::make_shared<Matrix>("VC", nm, nm);
     Vint->compute(matrices_["VC"]);
 
+    Vint_lr->set_charge_field(Zxyz);
+
+    matrices_["VC_lr"] = std::make_shared<Matrix>("VC_lr", nm, nm);
+    Vint_lr->compute(options_.get_double("ETA"), matrices_["VC_lr"]);
+
     // => Nuclear Repulsions <= //
 
     auto Zs = std::make_shared<Matrix>("Zs", nA, 3);
@@ -636,6 +662,9 @@ void FISAPT::nuclear() {
 
     auto Rinv = std::make_shared<Matrix>("Rinv", nA, nA);
     double** Rinvp = Rinv->pointer();
+
+    auto Rinv_lr = std::make_shared<Matrix>("Rinv_lr", nA, nA);
+    double** Rinvp_lr = Rinv_lr->pointer();
 
     for (int A = 0; A < nA; A++) {
         Zsp[A][0] = ZAp[A];
@@ -659,7 +688,9 @@ void FISAPT::nuclear() {
     for (int A = 0; A < nA; A++) {
         for (int B = 0; B < nA; B++) {
             if (A == B) continue;
-            Rinvp[A][B] = 1.0 / mol->xyz(A).distance(mol->xyz(B));
+            double r = mol->xyz(A).distance(mol->xyz(B));
+            Rinvp[A][B] = 1 / r;
+            Rinvp_lr[A][B] = (1 - exp(-options_.get_double("ETA") * r * r)) / r;
         }
     }
 
@@ -674,6 +705,19 @@ void FISAPT::nuclear() {
     for (int A = 0; A < 3; A++) {
         for (int B = 0; B < 3; B++) {
             Etot += Enucsp[A][B];
+        }
+    }
+
+    std::shared_ptr<Matrix> Enucs_lr = linalg::triplet(Zs, Rinv_lr, Zs, true, false, false);
+    Enucs_lr->scale(0.5);
+    Enucs_lr->set_name("E Nuc");
+    matrices_["E NUC lr"] = Enucs_lr;
+
+    double** Enucsp_lr = Enucs_lr->pointer();
+    double Etot_lr = 0.0;
+    for (int A = 0; A < 3; A++) {
+        for (int B = 0; B < 3; B++) {
+            Etot_lr += Enucsp_lr[A][B];
         }
     }
 
@@ -917,7 +961,10 @@ void FISAPT::scf() {
     std::shared_ptr<FISAPTSCF> scfB =
         std::make_shared<FISAPTSCF>(jk_, matrices_["E NUC"]->get(1, 1), matrices_["S"], matrices_["XC"], matrices_["T"],
                                     VB_SCF, matrices_["WC"], matrices_["LoccB"], options_);
+    outfile->Printf("  ==> SCF B test 1 <==\n\n");
     scfB->compute_energy();
+
+    outfile->Printf("  ==> SCF B test 2 <==\n\n");
 
     scalars_["E0 B"] = scfB->scalars()["E SCF"];
     matrices_["Cocc0B"] = scfB->matrices()["Cocc"];
@@ -926,6 +973,8 @@ void FISAPT::scf() {
     matrices_["K0B"] = scfB->matrices()["K"];
     vectors_["eps_occ0B"] = scfB->vectors()["eps_occ"];
     vectors_["eps_vir0B"] = scfB->vectors()["eps_vir"];
+
+    outfile->Printf("  ==> SCF done test  <==\n\n");
 }
 
 // Prep the computation to handle frozen core orbitals
@@ -1728,6 +1777,63 @@ void FISAPT::unify_part2() {
         matrices_["K_B"] = K_B;
         matrices_["J_C"] = J_C;
         matrices_["K_C"] = K_C;
+
+        outfile->Printf("  before jklr test \n\n");
+
+        jklr_ = JK::build_JK(options_.get_double("ETA"), primary_, reference_->get_basisset("DF_BASIS_SCF"), options_, false, doubles_);
+        jklr_->set_memory(doubles_);
+
+        outfile->Printf(" jklr test 1  \n\n");
+
+        SharedMatrix Cocc_A(matrices_["Cocc0A"]->clone());
+        SharedMatrix Cocc_B(matrices_["Cocc0B"]->clone());
+
+        outfile->Printf(" jklr test 2  \n\n");
+        std::vector<SharedMatrix>& Cllr = jklr_->C_left();
+        std::vector<SharedMatrix>& Crlr = jklr_->C_right();
+
+        outfile->Printf(" jklr test 3  \n\n");
+        const std::vector<SharedMatrix>& J_lr = jklr_->J();
+        const std::vector<SharedMatrix>& K_lr = jklr_->K();
+
+        outfile->Printf(" jklr test 4  \n\n");
+        Cllr.clear();
+        Crlr.clear();
+
+        Cllr.push_back(thislinkA);
+        Crlr.push_back(thislinkA);
+        Cllr.push_back(thislinkB);
+        Crlr.push_back(thislinkB);
+        Cllr.push_back(Cocc_A);
+        Crlr.push_back(Cocc_A);
+        Cllr.push_back(Cocc_B);
+        Crlr.push_back(Cocc_B);
+
+        outfile->Printf(" jklr test 5  \n\n");
+        jklr_->set_do_J(true);
+        jklr_->set_do_K(true);
+        jklr_->initialize();
+        jklr_->print_header();
+
+        jklr_->compute(options_.get_double("ETA"));
+
+        outfile->Printf(" jklr test 6  \n\n");
+
+//        std::shared_ptr<Matrix> J_A_lr(J_lr[0]->clone());
+//        J_A_lr->add(J_lr[2]);
+//        matrices_["J_A_lr"] = J_A_lr;
+
+        matrices_["J_A_lr"] = J_lr[0]->clone();
+        matrices_["J_A_lr"]->add(J_lr[2]);
+
+        matrices_["J_B_lr"] = J_lr[1]->clone();
+        matrices_["J_B_lr"]->add(J_lr[3]);
+
+        matrices_["K_A_lr"] = K_lr[0]->clone();
+        matrices_["K_A_lr"]->add(K_lr[2]);
+
+        matrices_["K_B_lr"] = K_lr[1]->clone();
+        matrices_["K_B_lr"]->add(K_lr[3]);
      
     if (link_assignment == "SAO2" || link_assignment == "SIAO2" ) {
 
@@ -2367,22 +2473,37 @@ void FISAPT::elst() {
 
     std::shared_ptr<Matrix> D_A = matrices_["D_A"];
     std::shared_ptr<Matrix> D_B = matrices_["D_B"];
-    std::shared_ptr<Matrix> V_A = matrices_["V_A"];
-    std::shared_ptr<Matrix> V_B = matrices_["V_B"];
-    std::shared_ptr<Matrix> J_A = matrices_["J_A"];
-    std::shared_ptr<Matrix> J_B = matrices_["J_B"];
+//    std::shared_ptr<Matrix> V_A = matrices_["V_A"];
+//    std::shared_ptr<Matrix> V_B = matrices_["V_B"];
+//    std::shared_ptr<Matrix> J_A = matrices_["J_A"];
+//    std::shared_ptr<Matrix> J_B = matrices_["J_B"];
+
+    std::shared_ptr<Matrix> V_A_full = matrices_["V_A"];
+    std::shared_ptr<Matrix> V_B_full = matrices_["V_B"];
+    std::shared_ptr<Matrix> J_A_full = matrices_["J_A"];
+    std::shared_ptr<Matrix> J_B_full = matrices_["J_B"];
+
+    std::shared_ptr<Matrix> V_A_lr = matrices_["VA_lr"];
+    std::shared_ptr<Matrix> V_B_lr = matrices_["VB_lr"];
+    std::shared_ptr<Matrix> J_A_lr = matrices_["J_A_lr"];
+    std::shared_ptr<Matrix> J_B_lr = matrices_["J_B_lr"];
 
     double Enuc = 0.0;
     double** Enuc2p = matrices_["E NUC"]->pointer();
     Enuc += 2.0 * Enuc2p[0][1];  // A - B
 
+    double Enuc_lr = 0.0;
+    double** Enuc2p_lr = matrices_["E NUC lr"]->pointer();
+    Enuc_lr += 2.0 * Enuc2p_lr[0][1];  // A - B
+
     double Elst10 = 0.0;
     std::vector<double> Elst10_terms;
     Elst10_terms.resize(4);
-    Elst10_terms[0] += 2.0 * D_A->vector_dot(V_B);
-    Elst10_terms[1] += 2.0 * D_B->vector_dot(V_A);
-    Elst10_terms[2] += 4.0 * D_A->vector_dot(J_B);
-    Elst10_terms[3] += 1.0 * Enuc;
+    Elst10_terms[0] += 2.0 * D_A->vector_dot(V_B_lr);
+    Elst10_terms[1] += 2.0 * D_B->vector_dot(V_A_lr);
+    Elst10_terms[2] += 4.0 * D_A->vector_dot(J_B_lr);
+    Elst10_terms[3] += 1.0 * Enuc_lr;
+//    Elst10_terms[3] += 1.0 * Enuc;
     for (int k = 0; k < Elst10_terms.size(); k++) {
         Elst10 += Elst10_terms[k];
     }
@@ -2392,6 +2513,18 @@ void FISAPT::elst() {
 
     scalars_["Elst10,r"] = Elst10;
     outfile->Printf("    Elst10,r            = %18.12lf [Eh]\n", Elst10);
+
+    double Elst10full = 0.0;
+    std::vector<double> Elst10full_terms;
+    Elst10full_terms.resize(4);
+    Elst10full_terms[0] += 2.0 * D_A->vector_dot(V_B_full);
+    Elst10full_terms[1] += 2.0 * D_B->vector_dot(V_A_full);
+    Elst10full_terms[2] += 4.0 * D_A->vector_dot(J_B_full);
+    Elst10full_terms[3] += 1.0 * Enuc;
+    for (int k = 0; k < Elst10full_terms.size(); k++) {
+        Elst10full += Elst10full_terms[k];
+    }
+    outfile->Printf("    Elst10,r  full          = %18.12lf [Eh]\n", Elst10full);
 
     // External potential interactions
     if (reference_->has_potential_variable("A") && reference_->has_potential_variable("B")) {
@@ -7004,36 +7137,40 @@ void FISAPT::fdisp() {
         ncol += (size_t)mat->ncol();
     }
 
-    auto dfh(std::make_shared<DFHelper>(primary_, auxiliary));
-    dfh->set_memory(doubles_ - Cs[0]->nrow() * ncol);
-    dfh->set_method("DIRECT_iaQ");
-    dfh->set_nthreads(nT);
-    dfh->initialize();
-    dfh->print_header();
+    double eta = options_.get_double("ETA");
 
-    dfh->add_space("a", Cs[0]);
-    dfh->add_space("r", Cs[1]);
-    dfh->add_space("b", Cs[2]);
-    dfh->add_space("s", Cs[3]);
-    dfh->add_space("r1", Cs[4]);
-    dfh->add_space("s1", Cs[5]);
-    dfh->add_space("a2", Cs[6]);
-    dfh->add_space("b2", Cs[7]);
-    dfh->add_space("r3", Cs[8]);
-    dfh->add_space("s3", Cs[9]);
-    dfh->add_space("a4", Cs[10]);
-    dfh->add_space("b4", Cs[11]);
+    auto dfh_lr(std::make_shared<DFHelper>(eta, primary_, auxiliary));
 
-    dfh->add_transformation("Aar", "r", "a");
-    dfh->add_transformation("Abs", "s", "b");
-    dfh->add_transformation("Bas", "s1", "a");
-    dfh->add_transformation("Bbr", "r1", "b");
-    dfh->add_transformation("Cas", "s", "a2");
-    dfh->add_transformation("Cbr", "r", "b2");
-    dfh->add_transformation("Dar", "r3", "a");
-    dfh->add_transformation("Dbs", "s3", "b");
-    dfh->add_transformation("Ear", "r", "a4");
-    dfh->add_transformation("Ebs", "s", "b4");
+//    auto dfh(std::make_shared<DFHelper>(primary_, auxiliary));
+    dfh_lr->set_memory(doubles_ - Cs[0]->nrow() * ncol);
+    dfh_lr->set_method("DIRECT_iaQ");
+    dfh_lr->set_nthreads(nT);
+    dfh_lr->initialize();
+    dfh_lr->print_header();
+
+    dfh_lr->add_space("a", Cs[0]);
+    dfh_lr->add_space("r", Cs[1]);
+    dfh_lr->add_space("b", Cs[2]);
+    dfh_lr->add_space("s", Cs[3]);
+    dfh_lr->add_space("r1", Cs[4]);
+    dfh_lr->add_space("s1", Cs[5]);
+    dfh_lr->add_space("a2", Cs[6]);
+    dfh_lr->add_space("b2", Cs[7]);
+    dfh_lr->add_space("r3", Cs[8]);
+    dfh_lr->add_space("s3", Cs[9]);
+    dfh_lr->add_space("a4", Cs[10]);
+    dfh_lr->add_space("b4", Cs[11]);
+
+    dfh_lr->add_transformation("Aar", "r", "a");
+    dfh_lr->add_transformation("Abs", "s", "b");
+    dfh_lr->add_transformation("Bas", "s1", "a");
+    dfh_lr->add_transformation("Bbr", "r1", "b");
+    dfh_lr->add_transformation("Cas", "s", "a2");
+    dfh_lr->add_transformation("Cbr", "r", "b2");
+    dfh_lr->add_transformation("Dar", "r3", "a");
+    dfh_lr->add_transformation("Dbs", "s3", "b");
+    dfh_lr->add_transformation("Ear", "r", "a4");
+    dfh_lr->add_transformation("Ebs", "s", "b4");
 
     // => Additional quantities needed for parallel/perpendicular link orbital spin coupling (but not for their average)  <= //
 
@@ -7075,26 +7212,26 @@ void FISAPT::fdisp() {
         Cs.push_back(Cx4);
         Cs.push_back(Cy4);
 
-        dfh->add_space("x1", Cs[12]);
-        dfh->add_space("y1", Cs[13]);
-        dfh->add_space("x2", Cs[14]);
-        dfh->add_space("y2", Cs[15]);
-        dfh->add_space("x3", Cs[16]);
-        dfh->add_space("y3", Cs[17]);
-        dfh->add_space("x4", Cs[18]);
-        dfh->add_space("y4", Cs[19]);
+        dfh_lr->add_space("x1", Cs[12]);
+        dfh_lr->add_space("y1", Cs[13]);
+        dfh_lr->add_space("x2", Cs[14]);
+        dfh_lr->add_space("y2", Cs[15]);
+        dfh_lr->add_space("x3", Cs[16]);
+        dfh_lr->add_space("y3", Cs[17]);
+        dfh_lr->add_space("x4", Cs[18]);
+        dfh_lr->add_space("y4", Cs[19]);
 
-        dfh->add_transformation("BYas", "y1", "a");
-        dfh->add_transformation("BXbr", "x1", "b");
-        dfh->add_transformation("CXas", "s", "x2");
-        dfh->add_transformation("CYbr", "r", "y2");
-        dfh->add_transformation("DXar", "x3", "a");
-        dfh->add_transformation("DYbs", "y3", "b");
-        dfh->add_transformation("EXar", "r", "x4");
-        dfh->add_transformation("EYbs", "s", "y4");
+        dfh_lr->add_transformation("BYas", "y1", "a");
+        dfh_lr->add_transformation("BXbr", "x1", "b");
+        dfh_lr->add_transformation("CXas", "s", "x2");
+        dfh_lr->add_transformation("CYbr", "r", "y2");
+        dfh_lr->add_transformation("DXar", "x3", "a");
+        dfh_lr->add_transformation("DYbs", "y3", "b");
+        dfh_lr->add_transformation("EXar", "r", "x4");
+        dfh_lr->add_transformation("EYbs", "s", "y4");
 
 // now ready for DF transformation in both cases
-        dfh->transform();
+        dfh_lr->transform(eta);
 
         Cx1.reset();
         Cy1.reset();
@@ -7107,7 +7244,7 @@ void FISAPT::fdisp() {
 
     }
     else {
-        dfh->transform();
+        dfh_lr->transform(eta);
  
     }
 
@@ -7120,7 +7257,7 @@ void FISAPT::fdisp() {
     Ca4.reset();
     Cb4.reset();
     Cs.clear();
-    dfh->clear_spaces();
+    dfh_lr->clear_spaces();
 
     // => Blocking ... figure out how big a tensor slice to handle at a time <= //
 
@@ -7225,36 +7362,36 @@ void FISAPT::fdisp() {
 
     // => Slice D + E -> D <= //
 
-    dfh->add_disk_tensor("Far", std::make_tuple(nr, na, nQ));
+    dfh_lr->add_disk_tensor("Far", std::make_tuple(nr, na, nQ));
 
     for (size_t rstart = 0; rstart < nr; rstart += max_r) {
         size_t nrblock = (rstart + max_r >= nr ? nr - rstart : max_r);
 
-        dfh->fill_tensor("Dar", Dar, {rstart, rstart + nrblock});
-        dfh->fill_tensor("Ear", Aar, {rstart, rstart + nrblock});
+        dfh_lr->fill_tensor("Dar", Dar, {rstart, rstart + nrblock});
+        dfh_lr->fill_tensor("Ear", Aar, {rstart, rstart + nrblock});
 
         double* D2p = Darp[0];
         double* A2p = Aarp[0];
         for (long int arQ = 0L; arQ < nrblock * naQ; arQ++) {
             (*D2p++) += (*A2p++);
         }
-        dfh->write_disk_tensor("Far", Dar, {rstart, rstart + nrblock});
+        dfh_lr->write_disk_tensor("Far", Dar, {rstart, rstart + nrblock});
     }
 
-    dfh->add_disk_tensor("Fbs", std::make_tuple(ns, nb, nQ));
+    dfh_lr->add_disk_tensor("Fbs", std::make_tuple(ns, nb, nQ));
 
     for (size_t sstart = 0; sstart < ns; sstart += max_s) {
         size_t nsblock = (sstart + max_s >= ns ? ns - sstart : max_s);
 
-        dfh->fill_tensor("Dbs", Dbs, {sstart, sstart + nsblock});
-        dfh->fill_tensor("Ebs", Abs, {sstart, sstart + nsblock});
+        dfh_lr->fill_tensor("Dbs", Dbs, {sstart, sstart + nsblock});
+        dfh_lr->fill_tensor("Ebs", Abs, {sstart, sstart + nsblock});
 
         double* D2p = Dbsp[0];
         double* A2p = Absp[0];
         for (long int bsQ = 0L; bsQ < nsblock * nbQ; bsQ++) {
             (*D2p++) += (*A2p++);
         }
-        dfh->write_disk_tensor("Fbs", Dbs, {sstart, sstart + nsblock});
+        dfh_lr->write_disk_tensor("Fbs", Dbs, {sstart, sstart + nsblock});
     }
 
     // => Targets <= //
@@ -7309,59 +7446,59 @@ void FISAPT::fdisp() {
         double** KXOYasp = KXOYas->pointer();
         double** KXOYbrp = KXOYbr->pointer();
 
-        dfh->add_disk_tensor("FXar", std::make_tuple(nr, na, nQ));
+        dfh_lr->add_disk_tensor("FXar", std::make_tuple(nr, na, nQ));
 
         for (size_t rstart = 0; rstart < nr; rstart += max_r) {
             size_t nrblock = (rstart + max_r >= nr ? nr - rstart : max_r);
 
-            dfh->fill_tensor("DXar", DXar, {rstart, rstart + nrblock});
-            dfh->fill_tensor("EXar", Aar, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("DXar", DXar, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("EXar", Aar, {rstart, rstart + nrblock});
 
             double* DX2p = DXarp[0];
             double* A2p = Aarp[0];
             for (long int arQ = 0L; arQ < nrblock * naQ; arQ++) {
                 (*DX2p++) += (*A2p++);
             }
-            dfh->write_disk_tensor("FXar", DXar, {rstart, rstart + nrblock});
+            dfh_lr->write_disk_tensor("FXar", DXar, {rstart, rstart + nrblock});
         }
 
-        dfh->add_disk_tensor("FYbs", std::make_tuple(ns, nb, nQ));
+        dfh_lr->add_disk_tensor("FYbs", std::make_tuple(ns, nb, nQ));
 
         for (size_t sstart = 0; sstart < ns; sstart += max_s) {
             size_t nsblock = (sstart + max_s >= ns ? ns - sstart : max_s);
 
-            dfh->fill_tensor("DYbs", DYbs, {sstart, sstart + nsblock});
-            dfh->fill_tensor("EYbs", Abs, {sstart, sstart + nsblock});
+            dfh_lr->fill_tensor("DYbs", DYbs, {sstart, sstart + nsblock});
+            dfh_lr->fill_tensor("EYbs", Abs, {sstart, sstart + nsblock});
 
             double* DY2p = DYbsp[0];
             double* A2p = Absp[0];
             for (long int bsQ = 0L; bsQ < nsblock * nbQ; bsQ++) {
                 (*DY2p++) += (*A2p++);
             }
-            dfh->write_disk_tensor("FYbs", DYbs, {sstart, sstart + nsblock});
+            dfh_lr->write_disk_tensor("FYbs", DYbs, {sstart, sstart + nsblock});
         }
     
         for (size_t rstart = 0; rstart < nr; rstart += max_r) {
             size_t nrblock = (rstart + max_r >= nr ? nr - rstart : max_r);
     
-            dfh->fill_tensor("Aar", Aar, {rstart, rstart + nrblock});
-            dfh->fill_tensor("Far", Dar, {rstart, rstart + nrblock});
-            dfh->fill_tensor("Bbr", Bbr, {rstart, rstart + nrblock});
-            dfh->fill_tensor("Cbr", Cbr, {rstart, rstart + nrblock});
-            dfh->fill_tensor("FXar", DXar, {rstart, rstart + nrblock});
-            dfh->fill_tensor("BXbr", BXbr, {rstart, rstart + nrblock});
-            dfh->fill_tensor("CYbr", CYbr, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("Aar", Aar, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("Far", Dar, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("Bbr", Bbr, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("Cbr", Cbr, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("FXar", DXar, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("BXbr", BXbr, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("CYbr", CYbr, {rstart, rstart + nrblock});
     
             for (size_t sstart = 0; sstart < ns; sstart += max_s) {
                 size_t nsblock = (sstart + max_s >= ns ? ns - sstart : max_s);
     
-                dfh->fill_tensor("Abs", Abs, {sstart, sstart + nsblock});
-                dfh->fill_tensor("Fbs", Dbs, {sstart, sstart + nsblock});
-                dfh->fill_tensor("Bas", Bas, {sstart, sstart + nsblock});
-                dfh->fill_tensor("Cas", Cas, {sstart, sstart + nsblock});
-                dfh->fill_tensor("FYbs", DYbs, {sstart, sstart + nsblock});
-                dfh->fill_tensor("BYas", BYas, {sstart, sstart + nsblock});
-                dfh->fill_tensor("CXas", CXas, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("Abs", Abs, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("Fbs", Dbs, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("Bas", Bas, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("Cas", Cas, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("FYbs", DYbs, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("BYas", BYas, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("CXas", CXas, {sstart, sstart + nsblock});
 
                 long int nrs = nrblock * nsblock;
 
@@ -7466,18 +7603,18 @@ void FISAPT::fdisp() {
         for (size_t rstart = 0; rstart < nr; rstart += max_r) {
             size_t nrblock = (rstart + max_r >= nr ? nr - rstart : max_r);
 
-            dfh->fill_tensor("Aar", Aar, {rstart, rstart + nrblock});
-            dfh->fill_tensor("Far", Dar, {rstart, rstart + nrblock});
-            dfh->fill_tensor("Bbr", Bbr, {rstart, rstart + nrblock});
-            dfh->fill_tensor("Cbr", Cbr, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("Aar", Aar, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("Far", Dar, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("Bbr", Bbr, {rstart, rstart + nrblock});
+            dfh_lr->fill_tensor("Cbr", Cbr, {rstart, rstart + nrblock});
 
             for (size_t sstart = 0; sstart < ns; sstart += max_s) {
                 size_t nsblock = (sstart + max_s >= ns ? ns - sstart : max_s);
 
-                dfh->fill_tensor("Abs", Abs, {sstart, sstart + nsblock});
-                dfh->fill_tensor("Fbs", Dbs, {sstart, sstart + nsblock});
-                dfh->fill_tensor("Bas", Bas, {sstart, sstart + nsblock});
-                dfh->fill_tensor("Cas", Cas, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("Abs", Abs, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("Fbs", Dbs, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("Bas", Bas, {sstart, sstart + nsblock});
+                dfh_lr->fill_tensor("Cas", Cas, {sstart, sstart + nsblock});
 
                 long int nrs = nrblock * nsblock;
 

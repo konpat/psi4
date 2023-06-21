@@ -1393,6 +1393,7 @@ int read_options(const std::string &name, Options &options, bool suppress_printi
         options.add_str("BASIS", "");
         /*- Omega scaling for Erf and Erfc.-*/
         options.add_double("OMEGA_ERF", 0.20);
+        options.add_double("ETA", 0.0);
     }
     if (name == "SCF" || options.read_globals()) {
         /*- MODULEDESCRIPTION Performs self consistent field (Hartree-Fock and

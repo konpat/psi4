@@ -3,7 +3,7 @@
  *
  * Psi4: an open-source quantum chemistry software package
  *
- * Copyright (c) 2007-2023 The Psi4 Developers.
+ * Copyright (c) 2007-2022 The Psi4 Developers.
  *
  * The copyrights for code used from other parties are included in
  * the corresponding files.
@@ -63,6 +63,9 @@ class PSI_API OneBodyAOInt {
     std::vector<SphericalTransform>& spherical_transforms_;
 
     Vector3 origin_;
+  
+    double eta_;
+    double omega_;
 
     // These are scratch arrays that are used for the integral engines that do not yet use Libint2
     // under the hood.  When everything is converted to use Libint2, they can be deleted.
@@ -99,6 +102,9 @@ class PSI_API OneBodyAOInt {
 
     /// Compute integrals for a given shell pair
     virtual void compute_pair(const libint2::Shell&, const libint2::Shell&);
+    virtual void compute_pair_reg(double eta, const libint2::Shell&, const libint2::Shell&);
+    virtual void compute_pair_erf(double omega, const libint2::Shell&, const libint2::Shell&);
+
     /// Compute first derivative integrals for a given shell pair
     virtual void compute_pair_deriv1(const libint2::Shell&, const libint2::Shell&);
     /// Compute second derivative integrals for a given shell pair
@@ -127,11 +133,15 @@ class PSI_API OneBodyAOInt {
      * @param result Shared matrix object that will hold the results.
      */
     void compute(SharedMatrix& result);
+    void compute(double eta, SharedMatrix& result);
+    void compute_erf(double omega, SharedMatrix& result);
+
     /*! @} */
 
     /// Computes all integrals and stores them in result by default this method throws
     virtual void compute(std::vector<SharedMatrix>& result);
-
+    virtual void compute(double eta, std::vector<SharedMatrix>& result);
+    virtual void compute_erf(double omega, std::vector<SharedMatrix>& result);
     /// Does the method provide first derivatives?
     virtual bool has_deriv1() { return false; }
 
@@ -143,6 +153,8 @@ class PSI_API OneBodyAOInt {
 
     /// Compute the integrals between basis function in the given shell pair.
     virtual void compute_shell(int, int);
+    virtual void compute_shell_reg(double, int, int);
+    virtual void compute_shell_erf(double, int, int);
     /// Computes the integrals between basis function in the given shell pair
     virtual void compute_shell_deriv1(int, int);
     /// Computes the integrals between basis function in the given shell pair
@@ -159,6 +171,9 @@ class PSI_API OneBodyAOInt {
 
     /// Set the origin (useful for properties)
     virtual void set_origin(const Vector3& _origin) { origin_ = _origin; }
+
+    void setEta(double eta);
+    void setOmega(double omega);
 
     /// Buffer where each chunk of integrals is placed
     const std::vector<const double*>& buffers() const { return buffers_; }

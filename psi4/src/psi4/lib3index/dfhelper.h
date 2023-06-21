@@ -51,6 +51,8 @@ class TwoBodyAOInt;
 class PSI_API DFHelper {
    public:
     DFHelper(std::shared_ptr<BasisSet> primary, std::shared_ptr<BasisSet> aux);
+    DFHelper(double eta, std::shared_ptr<BasisSet> primary, std::shared_ptr<BasisSet> aux);
+
     ~DFHelper();
 
     ///
@@ -183,6 +185,9 @@ class PSI_API DFHelper {
     void set_omega(double omega) { omega_ = omega; }
     double get_omega() { return omega_; }
 
+    void set_eta(double eta) { eta_ = eta; }
+    double get_eta() { return eta_; }
+
     ///
     /// sets the coefficient for (pq|rs) integrals
     /// @param omega double indicating coefficient for eri
@@ -209,6 +214,7 @@ class PSI_API DFHelper {
 
     /// Prepare screening and indexing metadata used for Schwarz screening.
     void prepare_sparsity();
+    void prepare_sparsity(double eta);
 
     /// print tons of useful info
     void print_header();
@@ -231,6 +237,7 @@ class PSI_API DFHelper {
 
     /// invoke transformations
     void transform();
+    void transform(double eta);
 
     // => Tensor IO <=
     // many ways to access the 3-index tensors.
@@ -365,6 +372,9 @@ class PSI_API DFHelper {
     double omega_;
     double omega_alpha_;
     double omega_beta_;
+
+    double eta_;
+
     bool debug_ = false;
     // Can we early-exit prepare_sparsity?
     bool sparsity_prepared_ = false;
@@ -400,6 +410,19 @@ class PSI_API DFHelper {
                                         std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
                                         std::vector<std::shared_ptr<TwoBodyAOInt>> weri);
 
+    void prepare_AO(double eta);
+    void prepare_AO_core(double eta);
+    void compute_dense_Qpq_blocking_Q(double eta, const size_t start, const size_t stop, double* Mp,
+                                      std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
+    void compute_sparse_pQq_blocking_Q(double eta, const size_t start, const size_t stop, double* Mp,
+                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
+    void compute_sparse_pQq_blocking_p(double eta, const size_t start, const size_t stop, double* Mp,
+                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
+    void compute_sparse_pQq_blocking_p_symm(double eta, const size_t start, const size_t stop, double* Mp,
+                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
+    void compute_sparse_pQq_blocking_p_symm_abw(double eta, const size_t start, const size_t stop, double* just_Mp, double* param_Mp,
+                                        std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                        std::vector<std::shared_ptr<TwoBodyAOInt>> weri);
 
 
     void contract_metric_AO_core_symm(double* Qpq, double* Ppq, double* metp, size_t begin, size_t end);
@@ -408,6 +431,9 @@ class PSI_API DFHelper {
     // => wK AO building machinery <=
     void prepare_AO_wK_core();
     void prepare_AO_wK();
+
+    void prepare_AO_wK_core(double eta);
+    void prepare_AO_wK(double eta);
 
     void copy_upper_lower_wAO_core_symm(double* Qpq, double* Ppq, size_t begin, size_t end);
 

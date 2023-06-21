@@ -172,6 +172,111 @@ std::shared_ptr<JK> JK::build_JK(std::shared_ptr<BasisSet> primary, std::shared_
         throw PSIEXCEPTION(message.str());
     }
 }
+
+std::shared_ptr<JK> JK::build_JK(double eta, std::shared_ptr<BasisSet> primary, std::shared_ptr<BasisSet> auxiliary,
+                                 Options& options, std::string jk_type) {
+//    eta_ = eta;
+    bool is_composite = jk_type.find("+") != std::string::npos; // does SCF_TYPE contain +?
+
+    bool do_density_screen = options.get_str("SCREENING") == "DENSITY";
+    bool do_df_scf_guess = options.get_bool("DF_SCF_GUESS");
+    
+    bool can_do_density_screen = (jk_type == "DIRECT" || jk_type == "DFDIRJ+LINK");
+
+    if (do_density_screen && !(can_do_density_screen || do_df_scf_guess)) {
+        throw PSIEXCEPTION("Density screening has not been implemented for non-Direct SCF algorithms.");
+    }
+
+    // Throw small DF warning
+    if (jk_type == "DF") {
+        outfile->Printf("\n  Warning: JK type 'DF' found in simple constructor, defaulting to DiskDFJK.\n");
+        outfile->Printf("           Please use the build_JK(primary, auxiliary, options, do_wK, memory)\n");
+        outfile->Printf("           constructor as DiskDFJK has non-optimal performance for many workloads.\n\n");
+        jk_type = "DISK_DF";
+    }
+
+    if (jk_type == "CD") {
+        auto jk = std::make_shared<CDJK>(primary, options, options.get_double("CHOLESKY_TOLERANCE"));
+
+        if (options["INTS_TOLERANCE"].has_changed()) jk->set_cutoff(options.get_double("INTS_TOLERANCE"));
+        if (options["SCREENING"].has_changed()) jk->set_csam(options.get_str("SCREENING") == "CSAM");
+        if (options["PRINT"].has_changed()) jk->set_print(options.get_int("PRINT"));
+        if (options["DEBUG"].has_changed()) jk->set_debug(options.get_int("DEBUG"));
+        if (options["BENCH"].has_changed()) jk->set_bench(options.get_int("BENCH"));
+        if (options["DF_INTS_IO"].has_changed()) jk->set_df_ints_io(options.get_str("DF_INTS_IO"));
+        jk->set_condition(options.get_double("DF_FITTING_CONDITION"));
+        if (options["DF_INTS_NUM_THREADS"].has_changed())
+            jk->set_df_ints_num_threads(options.get_int("DF_INTS_NUM_THREADS"));
+
+        return jk;
+
+    } else if (jk_type == "DISK_DF") {
+        auto jk = std::make_shared<DiskDFJK>(eta, primary, auxiliary, options);
+        _set_dfjk_options<DiskDFJK>(jk, options);
+        if (options["DF_INTS_IO"].has_changed()) jk->set_df_ints_io(options.get_str("DF_INTS_IO"));
+
+        return jk;
+
+    } else if (jk_type == "MEM_DF") {
+        auto jk = std::make_shared<MemDFJK>(eta, primary, auxiliary, options);
+        // TODO: re-enable after fixing all bugs
+        jk->set_wcombine(false);
+        _set_dfjk_options<MemDFJK>(jk, options);
+        if (options["WCOMBINE"].has_changed()) { jk->set_wcombine(options.get_bool("WCOMBINE")); }
+
+        return jk;
+    } else if (jk_type == "PK") {
+        PKJK* jk = new PKJK(primary, options);
+
+        if (options["INTS_TOLERANCE"].has_changed()) jk->set_cutoff(options.get_double("INTS_TOLERANCE"));
+        if (options["SCREENING"].has_changed()) jk->set_csam(options.get_str("SCREENING") == "CSAM");
+        if (options["PRINT"].has_changed()) jk->set_print(options.get_int("PRINT"));
+        if (options["DEBUG"].has_changed()) jk->set_debug(options.get_int("DEBUG"));
+
+        return std::shared_ptr<JK>(jk);
+
+    } else if (jk_type == "OUT_OF_CORE") {
+        DiskJK* jk = new DiskJK(primary, options);
+
+        if (options["INTS_TOLERANCE"].has_changed()) jk->set_cutoff(options.get_double("INTS_TOLERANCE"));
+        if (options["SCREENING"].has_changed()) jk->set_csam(options.get_str("SCREENING") == "CSAM");
+        if (options["PRINT"].has_changed()) jk->set_print(options.get_int("PRINT"));
+        if (options["DEBUG"].has_changed()) jk->set_debug(options.get_int("DEBUG"));
+        if (options["BENCH"].has_changed()) jk->set_bench(options.get_int("BENCH"));
+
+        return std::shared_ptr<JK>(jk);
+
+    } else if (jk_type == "DIRECT") {
+        DirectJK* jk = new DirectJK(primary, options);
+
+        if (options["INTS_TOLERANCE"].has_changed()) jk->set_cutoff(options.get_double("INTS_TOLERANCE"));
+        if (options["SCREENING"].has_changed()) jk->set_csam(options.get_str("SCREENING") == "CSAM");
+        if (options["PRINT"].has_changed()) jk->set_print(options.get_int("PRINT"));
+        if (options["DEBUG"].has_changed()) jk->set_debug(options.get_int("DEBUG"));
+        if (options["BENCH"].has_changed()) jk->set_bench(options.get_int("BENCH"));
+        if (options["DF_INTS_NUM_THREADS"].has_changed())
+            jk->set_df_ints_num_threads(options.get_int("DF_INTS_NUM_THREADS"));
+
+        return std::shared_ptr<JK>(jk);
+
+    /// handle composite methods
+    } else if (is_composite) {
+        auto jk = std::make_shared<CompositeJK>(primary, auxiliary, options);
+
+        if (options["INTS_TOLERANCE"].has_changed()) jk->set_cutoff(options.get_double("INTS_TOLERANCE"));
+        if (options["SCREENING"].has_changed()) jk->set_csam(options.get_str("SCREENING") == "CSAM");
+        if (options["PRINT"].has_changed()) jk->set_print(options.get_int("PRINT"));
+        if (options["DEBUG"].has_changed()) jk->set_debug(options.get_int("DEBUG"));
+        if (options["BENCH"].has_changed()) jk->set_bench(options.get_int("BENCH"));
+
+        return jk;
+
+    } else {
+        std::stringstream message;
+        message << "JK::build_JK: Unkown SCF Type '" << jk_type << "'" << std::endl;
+        throw PSIEXCEPTION(message.str());
+    }
+}
 std::shared_ptr<JK> JK::build_JK(std::shared_ptr<BasisSet> primary, std::shared_ptr<BasisSet> auxiliary,
                                  Options& options) {
     // if SCF_TYPE == DF, you are using the wrong constructor and get an error next constructor in
@@ -206,6 +311,37 @@ std::shared_ptr<JK> JK::build_JK(std::shared_ptr<BasisSet> primary, std::shared_
     // instead, I will let the already existing sets do their job
     // this requires do_wK and doubles to be passed here and set
 }
+
+std::shared_ptr<JK> JK::build_JK(double eta, std::shared_ptr<BasisSet> primary, std::shared_ptr<BasisSet> auxiliary,
+                                 Options& options, bool do_wK, size_t doubles) {
+//    eta_ = eta;
+    std::string jk_type = options.get_str("SCF_TYPE");
+    if (jk_type == "DF") {
+        // logic for MemDFJK vs DiskDFJK
+        if (options["DF_INTS_IO"].has_changed()) {
+            return build_JK(eta, primary, auxiliary, options, "DISK_DF");
+
+        } else {
+            // Build exact estimate via Schwarz metrics
+            auto jk = build_JK(eta, primary, auxiliary, options, "MEM_DF");
+            jk->set_do_wK(do_wK);
+            if (jk->memory_estimate() < doubles) {
+                return jk;
+            }
+            jk.reset();
+
+            // Use Disk DFJK
+            return build_JK(eta, primary, auxiliary, options, "DISK_DF");
+        }
+
+    } else {  // otherwise it has already been set
+        return build_JK(eta, primary, auxiliary, options, options.get_str("SCF_TYPE"));
+    }
+
+    // I am not passing wK and doubles to the next constructor FIXME??
+    // instead, I will let the already existing sets do their job
+    // this requires do_wK and doubles to be passed here and set
+}
 SharedVector JK::iaia(SharedMatrix /*Ci*/, SharedMatrix /*Ca*/) {
     throw PSIEXCEPTION("JK: (ia|ia) integrals not implemented");
 }
@@ -219,6 +355,42 @@ const std::vector<size_t>& JK::computed_shells_per_iter(const std::string& n_let
 }
 
 void JK::common_init() {
+    print_ = 1;
+    debug_ = 0;
+    bench_ = 0;
+
+    // 256 MB default
+    memory_ = 32000000L;
+    omp_nthread_ = 1;
+#ifdef _OPENMP
+    omp_nthread_ = Process::environment.get_n_threads();
+#endif
+    cutoff_ = 1.0E-12;
+    do_csam_ = false;
+
+    do_J_ = true;
+    do_K_ = true;
+    do_wK_ = false;
+    wcombine_ = false;
+    lr_symmetric_ = false;
+    omega_ = 0.0;
+    omega_alpha_ = 1.0;
+    omega_beta_ = 0.0;
+    early_screening_ = false;
+
+    num_computed_shells_ = 0L;
+    computed_shells_per_iter_ = {};
+
+    std::shared_ptr<IntegralFactory> integral =
+        std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
+    auto pet = std::make_shared<PetiteList>(primary_, integral);
+    AO2USO_ = SharedMatrix(pet->aotoso());
+}
+
+void JK::common_init(double eta) {
+    eta_ = eta;
+    eta_ = 0.0;
+
     print_ = 1;
     debug_ = 0;
     bench_ = 0;
@@ -655,6 +827,94 @@ void JK::compute() {
     }
 }
 
+void JK::compute(double eta) {
+ //   eta_ = eta;
+    // Is this density symmetric?
+    if (C_left_.size() && !C_right_.size()) {
+        lr_symmetric_ = true;
+        C_right_ = C_left_;
+    } else {
+        lr_symmetric_ = false;
+    }
+
+    // Figure out the symmetry and which codes will stay in C1 symmetry
+    input_symmetry_cast_map_.clear();
+    for (size_t i = 0; i < C_left_.size(); i++) {
+        // Make sure they have the same symmetry
+        if (C_left_[i]->nirrep() != C_right_[i]->nirrep()) {
+            throw PSIEXCEPTION("JK: C_left/C_right irrep mismatch!");
+        }
+
+        // Make sure they have the same zip index
+        if (C_left_[i]->colspi() != C_right_[i]->colspi()) {
+            throw PSIEXCEPTION("JK: C_left/C_right MO zip index size mismatch!");
+        }
+
+        // Figure out if we need to convert or not
+        if ((AO2USO_->nirrep() == 1) && (C_left_[i]->nirrep() == 1)) {
+            // Everything in C1, nothing to do
+            input_symmetry_cast_map_.push_back(false);
+        } else if (C_left_[i]->nirrep() == AO2USO_->nirrep()) {
+            // We match symmetry, does this code uses C1?
+            if (C1()) {
+                input_symmetry_cast_map_.push_back(true);
+            } else {
+                input_symmetry_cast_map_.push_back(false);
+            }
+        } else if ((C_left_[i]->nirrep() == 1) && C1()) {
+            // Code uses C1, nothing to do
+            input_symmetry_cast_map_.push_back(false);
+        } else {
+            // No other cases, throw
+            throw PSIEXCEPTION("JK: Input orbital irrep mismatch!");
+        }
+    }
+
+    // Construct the densities
+    timer_on("JK: D");
+    compute_D();
+    timer_off("JK: D");
+
+    if (C1()) {
+        timer_on("JK: USO2AO");
+        USO2AO();
+        timer_off("JK: USO2AO");
+    } else {
+        allocate_JK();
+    }
+
+    timer_on("JK: JK");
+    compute_JK(eta);
+    timer_off("JK: JK");
+
+    if (C1()) {
+        timer_on("JK: AO2USO");
+        AO2USO();
+        timer_off("JK: AO2USO");
+    }
+
+    if (debug_ > 6) {
+        outfile->Printf("   > JK <\n\n");
+        for (size_t N = 0; N < C_left_.size(); N++) {
+            if (C1() && AO2USO_->nirrep() != 1) {
+                C_left_ao_[N]->print("outfile");
+                C_right_ao_[N]->print("outfile");
+                D_ao_[N]->print("outfile");
+                J_ao_[N]->print("outfile");
+                K_ao_[N]->print("outfile");
+            }
+            C_left_[N]->print("outfile");
+            C_right_[N]->print("outfile");
+            D_[N]->print("outfile");
+            J_[N]->print("outfile");
+            K_[N]->print("outfile");
+        }
+    }
+
+    if (lr_symmetric_) {
+        C_right_.clear();
+    }
+}
 void JK::set_wcombine(bool wcombine) {
     wcombine_ = wcombine;
     if (wcombine) {

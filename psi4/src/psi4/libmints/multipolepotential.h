@@ -68,4 +68,84 @@ class MultipolePotentialInt : public OneBodyAOInt, public mdintegrals::MDHelper 
     ~MultipolePotentialInt() override;
 };
 
+class MultipolePotentialInt_reg : public OneBodyAOInt, public mdintegrals::MDHelper {
+    // maximum multipole potential order to compute (order of the 1/R derivative)
+    double eta_;
+    int order_;
+
+    //! CCA-ordered Cartesian components for the multipoles
+    std::vector<std::vector<std::array<int, 3>>> comps_der_;
+
+    //! Boys function evaluator from Libint2
+    std::shared_ptr<const libint2::FmEval_Chebyshev7<double>> fm_eval_;
+
+    //! R matrix (9.5.31)
+    std::vector<double> R;
+
+//    void set_charge_field(std::make_shared<Matrix>);
+
+    //! Computes the multipole potential between two Gaussian shells.
+    void compute_pair_reg(double, const libint2::Shell&, const libint2::Shell&) override;
+
+   protected:
+    /// Matrix of coordinates/charges of partial charges
+    std::vector<std::pair<double, std::array<double, 3>>> Zxyz_;
+ 
+   public:
+    //! Constructor. Do not call directly use an IntegralFactory.
+    MultipolePotentialInt_reg(double eta, std::vector<SphericalTransform>&, std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet>,
+                          int order, int deriv = 0);
+    //! Virtual destructor
+    ~MultipolePotentialInt_reg() override;
+
+    void setEta(double eta);
+
+   // Set the field of charges
+//    void set_charge_field(SharedMatrix C_) { C = C_; };
+    void set_charge_field(std::vector<std::pair<double, std::array<double, 3>>>& Zxyz);
+   // Get the field of charges
+//    SharedMatrix charge_field() const { return C; }
+   //
+//    void compute_pair_reg(double eta, const libint2::Shell&, const libint2::Shell&) override;
+
+};
+
+class MultipolePotentialInt_erf : public OneBodyAOInt, public mdintegrals::MDHelper {
+    // maximum multipole potential order to compute (order of the 1/R derivative)
+    double omega_;
+    int order_;
+
+    //! CCA-ordered Cartesian components for the multipoles
+    std::vector<std::vector<std::array<int, 3>>> comps_der_;
+
+    //! Boys function evaluator from Libint2
+    std::shared_ptr<const libint2::FmEval_Chebyshev7<double>> fm_eval_;
+
+    //! R matrix (9.5.31)
+    std::vector<double> R;
+
+    //! Computes the multipole potential between two Gaussian shells.
+    void compute_pair_erf(double, const libint2::Shell&, const libint2::Shell&) override;
+
+   protected:
+    /// Matrix of coordinates/charges of partial charges
+    SharedMatrix C;
+ 
+   public:
+    //! Constructor. Do not call directly use an IntegralFactory.
+    MultipolePotentialInt_erf(double omega, std::vector<SphericalTransform>&, std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet>,
+                          int order, int deriv = 0);
+    //! Virtual destructor
+    ~MultipolePotentialInt_erf() override;
+
+    void setOmega(double omega);
+
+   // Set the field of charges
+    void set_charge_field(SharedMatrix C_) { C = C_; }
+  
+   // Get the field of charges
+    SharedMatrix charge_field() const { return C; }
+   //
+};
+
 }  // namespace psi

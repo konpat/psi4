@@ -49,6 +49,10 @@ void fill_M_matrix(int maxam, int maxpow, const Point& PC, double a, double b, s
                    std::vector<double>& My, std::vector<double>& Mz);
 void fill_R_matrix(int maxam, double p, const Point& P, const Point& C, std::vector<double>& R,
                    std::shared_ptr<const libint2::FmEval_Chebyshev7<double>> fm_eval);
+void fill_R_matrix_reg(int maxam, double p, double eta, const Point& PC, std::vector<double>& R,
+                   std::shared_ptr<const libint2::FmEval_Chebyshev7<double>> fm_eval);
+void fill_R_matrix_erf(int maxam, double p, double omega, const Point& PC, std::vector<double>& R,
+                   std::shared_ptr<const libint2::FmEval_Chebyshev7<double>> fm_eval);
 
 std::vector<std::array<int, 3>> generate_am_components_cca(int am);
 

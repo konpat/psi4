@@ -63,6 +63,7 @@ class FISAPT {
     /// Global JK object
     std::shared_ptr<JK> jk_;
 
+    std::shared_ptr<JK> jklr_;
     /// Map of scalars
     std::map<std::string, double> scalars_;
     /// Map of vectors
@@ -80,6 +81,7 @@ class FISAPT {
 
     // DFHelper object
     std::shared_ptr<DFHelper> dfh_;
+    std::shared_ptr<DFHelper> dfh_lr;   
 
     /// Helper to drop a matrix to filepath/A->name().dat
     /// Helper to drop a vector to filepath/A->name().dat
@@ -222,7 +224,6 @@ class CPHF_FISAPT {
     int maxiter_;
     // JK Object
     std::shared_ptr<JK> jk_;
-
     // => Monomer A Problem <= //
 
     // Perturbation applied to A
