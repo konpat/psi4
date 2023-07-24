@@ -574,11 +574,16 @@ void DiskDFJK::preiterations(double eta) {
     // Core or disk?
     is_core_ = is_core();
 
-    if (is_core_)
+    if (is_core_) {
+        outfile->Printf(" jklr preiteration  test 1  \n\n");
         initialize_JK_core(eta_);
-    else
+        outfile->Printf(" jklr preiteration  test 2  \n\n");
+    }
+    else {
+        outfile->Printf(" jklr preiteration  test 3  \n\n");
         initialize_JK_disk(eta_);
-
+        outfile->Printf(" jklr preiteration  test 4  \n\n");
+    }
 }
 void DiskDFJK::compute_JK() {
 
@@ -621,14 +626,20 @@ void DiskDFJK::compute_JK(double eta) {
     max_nocc_ = max_nocc();
     max_rows_ = max_rows();
 
+    outfile->Printf(" jklr compute_JK DiskDFJK test 1  \n\n");
     if (do_J_ || do_K_) {
+        outfile->Printf(" jklr compute_JK DiskDFJK test 2  \n\n");
         initialize_temps(eta_);
+        outfile->Printf(" jklr compute_JK DiskDFJK test 3  \n\n");
         if (is_core_)
-            manage_JK_core(eta_);
+            manage_JK_core();
         else
-            manage_JK_disk(eta_);
+            outfile->Printf(" jklr compute_JK DiskDFJK test 4  \n\n");
+            manage_JK_disk();
+            outfile->Printf(" jklr compute_JK DiskDFJK test 5  \n\n");
         free_temps(eta_);
     }
+    outfile->Printf(" jklr compute_JK DiskDFJK test 6  \n\n");
 }
 void DiskDFJK::postiterations() {
     Qmn_.reset();
@@ -845,10 +856,10 @@ void DiskDFJK::initialize_JK_core(double eta) {
     // shell pair blocks
     std::vector<ShellPairBlock> p_blocks = eri_[0]->get_blocks12();
     std::vector<ShellPairBlock> mn_blocks = eri_[0]->get_blocks34();
-
+    outfile->Printf(" jklr initialize_JK_core  test 0 full %d  \n\n",mn_blocks.size());
     std::vector<ShellPairBlock> p_blocks_sr = f12g12_[0]->get_blocks12();
     std::vector<ShellPairBlock> mn_blocks_sr = f12g12_[0]->get_blocks34();
-
+    outfile->Printf(" jklr initialize_JK_core  test 0 sr %d  \n\n",mn_blocks_sr.size());
     timer_on("JK: (A|mn)");
 
 // We are calculting integrals of (p|mn). Note that mn is on the ket side.
@@ -892,9 +903,11 @@ void DiskDFJK::initialize_JK_core(double eta) {
         // loop over all the blocks of P
         for (int p_block_idx = 0; p_block_idx < p_blocks.size(); ++p_block_idx) {
             // compute the
+            outfile->Printf(" jklr initialize_JK_core  test 1, %d %d \n\n", mn_block_idx, p_block_idx);
             eri_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
+            outfile->Printf(" jklr initialize_JK_core  test 2, %d %d \n\n", mn_block_idx, p_block_idx);
             f12g12_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
-
+            outfile->Printf(" jklr initialize_JK_core  test 3, %d %d \n\n", mn_block_idx, p_block_idx);
             const auto* buffer = buffers[0];
 
             const auto& p_block = p_blocks[p_block_idx];
@@ -2315,7 +2328,9 @@ void DiskDFJK::manage_JK_core(double eta) {
         int naux = (auxiliary_->nbf() - Q <= max_rows_ ? auxiliary_->nbf() - Q : max_rows_);
         if (do_J_) {
             timer_on("JK: J");
+            outfile->Printf(" jklr DiskDFJK manage JK core block J test 1   \n\n");           
             block_J(eta_, &Qmn_->pointer()[Q], naux);
+            outfile->Printf(" jklr DiskDFJK manage JK core block J test 2   \n\n");
             timer_off("JK: J");
         }
         if (do_K_) {
@@ -2456,7 +2471,7 @@ void DiskDFJK::block_J(double eta, double** Qmnp, int naux) {
     const std::vector<std::pair<int, int> >& function_pairs_sr = f12g12_.front()->function_pairs();
 
     size_t num_nm = function_pairs.size();
-
+    outfile->Printf(" jklr DiskDFJK block J test 0  \n\n");
     for (size_t N = 0; N < J_ao_.size(); N++) {
         double** Dp = D_ao_[N]->pointer();
         double** Jp = J_ao_[N]->pointer();
@@ -2481,17 +2496,22 @@ void DiskDFJK::block_J(double eta, double** Qmnp, int naux) {
  
             D2srp[mn] = (i == j ? Dp[i][j] : Dp[i][j] + Dp[i][j]);
 
+            D2p[mn] = D2p[mn] - D2srp[mn];
+        outfile->Printf(" jklr DiskDFJK block J test 1  \n\n");
         }
 
         timer_on("JK: J1");
         C_DGEMV('N', naux, num_nm, 1.0, Qmnp[0], num_nm, D2p, 1, 0.0, dp, 1);
 
+        outfile->Printf(" jklr DiskDFJK block J test 2   \n\n");
 //        C_DGEMV('N', naux, num_nm, 1.0, Qmnp[0], num_nm, D2p-D2srp, 1, 0.0, dp, 1);
 
         timer_off("JK: J1");
 
         timer_on("JK: J2");
         C_DGEMV('T', naux, num_nm, 1.0, Qmnp[0], num_nm, dp, 1, 0.0, J2p, 1);
+        outfile->Printf(" jklr DiskDFJK block J test 2   \n\n");
+
         timer_off("JK: J2");
         for (size_t mn = 0; mn < num_nm; ++mn) {
             int m = function_pairs[mn].first;
@@ -2503,8 +2523,15 @@ void DiskDFJK::block_J(double eta, double** Qmnp, int naux) {
             Jp[m][n] += J2p[mn];
             Jp[n][m] += (m == n ? 0.0 : J2p[mn]);
 
-//            Jsrp[i][j] += J2srp[mn];
-//            Jsrp[j][i] += (i == j ? 0.0 : J2srp[mn]);
+            Jsrp[i][j] += J2srp[mn];
+            Jsrp[j][i] += (i == j ? 0.0 : J2srp[mn]);
+
+            outfile->Printf(" jklr DiskDFJK block J test 4   \n\n");
+
+            Jp[m][n] -= Jsrp[i][j];
+            Jp[n][m] -= Jsrp[j][i];
+
+            outfile->Printf(" jklr DiskDFJK block J test 5   \n\n");
 
         }
     }
@@ -2652,18 +2679,23 @@ void DiskDFJK::block_K(double eta, double** Qmnp, int naux) {
                     long int ij = function_pairs_to_dense[(m >= n ? (m * (m + 1L) >> 1) + n : (n * (n + 1L) >> 1) + m)];
 
                     long int cd = function_pairs_to_dense_sr[(m >= a ? (m * (m + 1L) >> 1) + a : (a * (a + 1L) >> 1) + m)];
-
+                    
+              //      vQmn = &Qmnp[0][ij];
+                    
                     C_DCOPY(naux, &Qmnp[0][ij], num_nm, &QSp[0][i], nbf);
                     C_DCOPY(nocc, Clp[n], 1, &Ctp[0][i], nbf);
 
+                    outfile->Printf(" jklr DiskDFJK block K test 1  \n\n");
          //           C_DCOPY(nocc, Clp[n]-Clsrp[a], 1, &Ctp[0][i], nbf);
 
                 }
 
+                outfile->Printf(" jklr DiskDFJK block K test 2  \n\n");
                 C_DGEMM('N', 'T', nocc, naux, rows, 1.0, Ctp[0], nbf, QSp[0], nbf, 0.0,
                         &Elp[0][m * (size_t)nocc * naux], naux);
+                outfile->Printf(" jklr DiskDFJK block K test 3  \n\n");
             }
-
+            outfile->Printf(" jklr DiskDFJK block K test 4  \n\n");
             timer_off("JK: K1");
         }
 
@@ -2703,12 +2735,14 @@ void DiskDFJK::block_K(double eta, double** Qmnp, int naux) {
                         C_DCOPY(naux, &Qmnp[0][ij], num_nm, &QSp[0][i], nbf);
                         C_DCOPY(nocc, Crp[n], 1, &Ctp[0][i], nbf);
 
+                        outfile->Printf(" jklr DiskDFJK block K test 5  \n\n");
            //             C_DCOPY(nocc, Crp[n]-Crsrp[a], 1, &Ctp[0][i], nbf);
 
                     }
-
+                    outfile->Printf(" jklr DiskDFJK block K test 6  \n\n");
                     C_DGEMM('N', 'T', nocc, naux, rows, 1.0, Ctp[0], nbf, QSp[0], nbf, 0.0,
                             &Erp[0][m * (size_t)nocc * naux], naux);
+                    outfile->Printf(" jklr DiskDFJK block K test 7  \n\n");
                 }
 
                 timer_off("JK: K1");

@@ -342,13 +342,14 @@ class PSI_API JK {
 
     /// Setup integrals, files, etc
     virtual void preiterations() = 0;
+    virtual void preiterations(double eta) = 0;
     /// Compute J/K for current C/D
     virtual void compute_JK() = 0;
 
-    virtual void compute_JK(double eta);
+    virtual void compute_JK(double eta) = 0;
     /// Delete integrals, files, etc
     virtual void postiterations() = 0;
-
+    virtual void postiterations(double eta) = 0;
     // => Helper Routines <= //
 
     /// Memory (doubles) used to hold J/K/wK/C/D and ao versions, at current moment
@@ -514,6 +515,7 @@ class PSI_API JK {
      * but BEFORE first call of compute()
      */
     void initialize();
+    void initialize(double eta);
     /**
      * Compute D/J/K for the current C
      * Update values in your reference to
@@ -531,7 +533,7 @@ class PSI_API JK {
      * initialize()
      */
     void finalize();
-
+    void finalize(double eta);
     /**
      * Virtual method to provide (ia|ia) integrals for
      * SO-basis C_mi and C_na matrices in O(N^4) or less
@@ -633,10 +635,15 @@ class PSI_API DiskJK : public JK {
     bool C1() const override { return false; }
     /// Setup integrals, files, etc
     void preiterations() override;
+    void preiterations(double eta) override;
+
     /// Compute J/K for current C/D
     void compute_JK() override;
+    void compute_JK(double eta) override;
+
     /// Delete integrals, files, etc
     void postiterations() override;
+    void postiterations(double eta) override;
 
     /// Common initialization
     void common_init();
@@ -694,11 +701,15 @@ class PSI_API PKJK : public JK {
     bool C1() const override;
     /// Setup integrals, files, etc
     void preiterations() override;
+    void preiterations(double eta) override;
+
     /// Compute J/K for current C/D
     void compute_JK() override;
+    void compute_JK(double eta) override;
+
     /// Delete integrals, files, etc
     void postiterations() override;
-
+    void postiterations(double eta) override;
     /// Common initialization
     void common_init();
 
@@ -788,6 +799,12 @@ class PSI_API DirectJK : public JK {
     /// Delete integrals, files, etc
     void postiterations() override;
 
+    /// Setup integrals, files, etc
+    void preiterations(double eta) override;
+    /// Compute J/K for current C/D
+    void compute_JK(double eta) override;
+    /// Delete integrals, files, etc
+    void postiterations(double eta) override;
     /// Set up Incfock variables per iteration
     void incfock_setup();
     /// Post-iteration Incfock processing
@@ -993,11 +1010,11 @@ class PSI_API DiskDFJK : public JK {
     void free_w_temps();
 
     /// Setup integrals, files, etc
-    void preiterations(double eta);
+    void preiterations(double eta) override;
     /// Compute J/K for current C/D
-    void compute_JK(double eta);
+    void compute_JK(double eta) override;
     /// Delete integrals, files, etc
-    void postiterations(double eta);
+    void postiterations(double eta) override;
 
     /// Common initialization
     void common_init(double eta);
@@ -1185,11 +1202,14 @@ class PSI_API MemDFJK : public JK {
     /// Setup integrals, files, etc
     /// calls initialize(), JK_blocking
     void preiterations() override;
-    void preiterations(double eta);
+    void preiterations(double eta) override;
     /// Compute J/K for current C/D
     void compute_JK() override;
+    void compute_JK(double eta) override;
+
     /// Delete integrals, files, etc
     void postiterations() override;
+    void postiterations(double eta) override;
 
     /// Common initialization
     void common_init();
@@ -1327,10 +1347,15 @@ class PSI_API CompositeJK : public JK {
     bool C1() const override { return true; }
     /// Setup integrals, files, etc
     void preiterations() override;
+    void preiterations(double eta) override;
+
     /// Compute J/K for current C/D
     void compute_JK() override;
+    void compute_JK(double eta) override;
+
     /// Delete integrals, files, etc
     void postiterations() override;
+    void postiterations(double eta) override;
 
     /// Set up Incfock variables per iteration
     void incfock_setup();

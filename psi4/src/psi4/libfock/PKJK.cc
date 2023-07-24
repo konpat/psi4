@@ -42,6 +42,7 @@
 
 #include <sstream>
 #include "psi4/libpsi4util/PsiOutStream.h"
+#include "psi4/libpsi4util/exception.h"
 #ifdef _OPENMP
 #include <omp.h>
 #include "psi4/libpsi4util/process.h"
@@ -113,6 +114,37 @@ void PKJK::preiterations() {
     timer_off("Total PK formation time");
 }
 
+void PKJK::preiterations(double eta) {
+    // Build PKManager to get proper algorithm set up
+    Options& options = Process::environment.options;
+
+    psio_ = _default_psio_lib_;
+
+    timer_on("Total PK formation time");
+    // We compute the integrals so that we can directly write the
+    // PK file to disk. Also, do everything in the AO basis
+    // like the modern JK algos, for adding sieving later
+
+    PKmanager_ = pk::PKManager::build_PKManager(psio_, primary_, memory_, options, do_wK_, omega_);
+
+    PKmanager_->initialize();
+
+    PKmanager_->form_PK();
+
+    // If range-separated K needed, we redo all the above steps
+    if (do_wK_) {
+        outfile->Printf("  Computing range-separated integrals for PK\n");
+
+        PKmanager_->initialize_wK();
+
+        PKmanager_->form_PK_wK();
+    }
+
+    // PK files are written at this point. We are done.
+    timer_off("Total PK formation time");
+}
+
+
 void PKJK::compute_JK() {
 
     // zero out J, K, and wK matrices
@@ -138,6 +170,9 @@ void PKJK::compute_JK() {
 
     timer_off("PK computes JK");
 }
-
+void PKJK::compute_JK(double eta) {
+    throw PSIEXCEPTION("This method is not implemented.");
+}
 void PKJK::postiterations() {}
+void PKJK::postiterations(double eta) {}
 }  // namespace psi

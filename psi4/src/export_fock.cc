@@ -47,8 +47,12 @@ using namespace pybind11::literals;
 
 void export_fock(py::module &m) {
 
+    typedef void (JK::*initialize_no_args)();
+    typedef void (JK::*initialize_one_arg)(double);
     typedef void (JK::*compute_no_args)();
     typedef void (JK::*compute_one_arg)(double);
+    typedef void (JK::*finalize_no_args)();
+    typedef void (JK::*finalize_one_arg)(double);
 
     py::class_<JK, std::shared_ptr<JK>>(m, "JK", "docstring")
         .def_static("build_JK",
@@ -61,7 +65,9 @@ void export_fock(py::module &m) {
                     })
         .def("name", &JK::name)
         .def("memory_estimate", &JK::memory_estimate)
-        .def("initialize", &JK::initialize)
+        .def("initialize", initialize_no_args(&JK::initialize))
+        .def("initialize", initialize_one_arg(&JK::initialize),"eta"_a)
+
         .def("basisset", &JK::basisset)
         .def("set_print", &JK::set_print)
         .def("set_cutoff", &JK::set_cutoff)
@@ -86,7 +92,8 @@ void export_fock(py::module &m) {
         .def("compute", compute_no_args(&JK::compute))
         .def("compute", compute_one_arg(&JK::compute),"eta"_a)
 
-        .def("finalize", &JK::finalize)
+        .def("finalize", finalize_no_args(&JK::finalize))
+        .def("finalize", finalize_one_arg(&JK::finalize),"eta"_a)
         .def("C_clear",
              [](JK &jk) {
                  jk.C_left().clear();

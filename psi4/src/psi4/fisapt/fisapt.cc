@@ -1812,12 +1812,13 @@ void FISAPT::unify_part2() {
         outfile->Printf(" jklr test 5  \n\n");
         jklr_->set_do_J(true);
         jklr_->set_do_K(true);
-        jklr_->initialize();
+        jklr_->initialize(options_.get_double("ETA"));
+        outfile->Printf(" jklr test 6  \n\n");
         jklr_->print_header();
 
         jklr_->compute(options_.get_double("ETA"));
 
-        outfile->Printf(" jklr test 6  \n\n");
+        outfile->Printf(" jklr test 7  \n\n");
 
 //        std::shared_ptr<Matrix> J_A_lr(J_lr[0]->clone());
 //        J_A_lr->add(J_lr[2]);

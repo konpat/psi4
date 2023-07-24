@@ -738,7 +738,7 @@ void JK::AO2USO() {
     delete[] temp;
 }
 void JK::initialize() { preiterations(); }
-
+void JK::initialize(double eta) { eta_ = eta; preiterations(eta_); }
 void JK::compute() {
     // Is this density symmetric?
     if (C_left_.size() && !C_right_.size()) {
@@ -883,10 +883,12 @@ void JK::compute(double eta) {
         allocate_JK();
     }
 
+    outfile->Printf(" jklr compute  test 1  \n\n");
     timer_on("JK: JK");
     compute_JK(eta);
     timer_off("JK: JK");
 
+    outfile->Printf(" jklr compute  test 2  \n\n");
     if (C1()) {
         timer_on("JK: AO2USO");
         AO2USO();
@@ -945,4 +947,5 @@ size_t JK::num_computed_shells() {
 }
 
 void JK::finalize() { postiterations(); }
+void JK::finalize(double eta) { eta_ = eta; postiterations(eta_); }
 }  // namespace psi

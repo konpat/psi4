@@ -39,6 +39,8 @@
 #include "psi4/liboptions/liboptions.h"
 #include "psi4/lib3index/dftensor.h"
 
+#include "psi4/libpsi4util/exception.h"
+
 #include <unordered_set>
 #include <vector>
 #include <map>
@@ -427,7 +429,7 @@ void CompositeJK::print_COSX_header() const {
 }
 
 void CompositeJK::preiterations() {}
-
+void CompositeJK::preiterations(double eta) {}
 void CompositeJK::incfock_setup() {
     if (do_incfock_iter_) {
         auto njk = D_ao_.size();
@@ -530,8 +532,11 @@ void CompositeJK::compute_JK() {
     if (initial_iteration_) initial_iteration_ = false;
 }
 
+void CompositeJK::compute_JK(double eta) {
+    throw PSIEXCEPTION("This method is not implemented.");
+}
 void CompositeJK::postiterations() {}
-
+void CompositeJK::postiterations(double eta) {}
 // build the J matrix using Weigend's integral-direct density fitting algorithm
 // algorithm is in Figure 1 of https://doi.org/10.1039/B204199P
 void CompositeJK::build_DirectDFJ(std::vector<std::shared_ptr<Matrix>>& D, std::vector<std::shared_ptr<Matrix>>& J) {
