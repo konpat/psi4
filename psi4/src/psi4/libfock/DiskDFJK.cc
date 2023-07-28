@@ -631,15 +631,19 @@ void DiskDFJK::compute_JK(double eta) {
         outfile->Printf(" jklr compute_JK DiskDFJK test 2  \n\n");
         initialize_temps(eta_);
         outfile->Printf(" jklr compute_JK DiskDFJK test 3  \n\n");
-        if (is_core_)
-            manage_JK_core();
-        else
+        if (is_core_) {
             outfile->Printf(" jklr compute_JK DiskDFJK test 4  \n\n");
-            manage_JK_disk();
+            manage_JK_core(eta_);
             outfile->Printf(" jklr compute_JK DiskDFJK test 5  \n\n");
+        }
+        else {
+            outfile->Printf(" jklr compute_JK DiskDFJK test 6  \n\n");
+            manage_JK_disk();
+            outfile->Printf(" jklr compute_JK DiskDFJK test 7  \n\n");
+        }
         free_temps(eta_);
     }
-    outfile->Printf(" jklr compute_JK DiskDFJK test 6  \n\n");
+    outfile->Printf(" jklr compute_JK DiskDFJK test 8  \n\n");
 }
 void DiskDFJK::postiterations() {
     Qmn_.reset();
@@ -898,23 +902,30 @@ void DiskDFJK::initialize_JK_core(double eta) {
         const auto& mn_block = mn_blocks[mn_block_idx];
 
         const auto &buffers_sr = f12g12_[rank]->buffers();
-        const auto& mn_block_sr = mn_blocks_sr[mn_block_idx];
-
+        if (mn_block_idx < mn_blocks_sr.size()) {
+            const auto& mn_block_sr = mn_blocks_sr[mn_block_idx];
+        }
         // loop over all the blocks of P
         for (int p_block_idx = 0; p_block_idx < p_blocks.size(); ++p_block_idx) {
             // compute the
             outfile->Printf(" jklr initialize_JK_core  test 1, %d %d \n\n", mn_block_idx, p_block_idx);
             eri_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
             outfile->Printf(" jklr initialize_JK_core  test 2, %d %d \n\n", mn_block_idx, p_block_idx);
-            f12g12_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
-            outfile->Printf(" jklr initialize_JK_core  test 3, %d %d \n\n", mn_block_idx, p_block_idx);
+
+            if (mn_block_idx < mn_blocks_sr.size()) {
+                f12g12_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
+                outfile->Printf(" jklr initialize_JK_core  test 3, %d %d \n\n", mn_block_idx, p_block_idx);
+        //        const auto* buffer_sr = buffers_sr[0];
+
+                const auto& p_block_sr = p_blocks_sr[p_block_idx];
+            }
             const auto* buffer = buffers[0];
 
             const auto& p_block = p_blocks[p_block_idx];
 
             const auto* buffer_sr = buffers_sr[0];
 
-            const auto& p_block_sr = p_blocks_sr[p_block_idx];
+       //     const auto& p_block_sr = p_blocks_sr[p_block_idx];
 
             for (const auto& mn_pair : mn_block) {
                 const int m = mn_pair.first;
@@ -2329,13 +2340,13 @@ void DiskDFJK::manage_JK_core(double eta) {
         if (do_J_) {
             timer_on("JK: J");
             outfile->Printf(" jklr DiskDFJK manage JK core block J test 1   \n\n");           
-            block_J(eta_, &Qmn_->pointer()[Q], naux);
+            block_J(&Qmn_->pointer()[Q], naux);
             outfile->Printf(" jklr DiskDFJK manage JK core block J test 2   \n\n");
             timer_off("JK: J");
         }
         if (do_K_) {
             timer_on("JK: K");
-            block_K(eta_, &Qmn_->pointer()[Q], naux);
+            block_K(&Qmn_->pointer()[Q], naux);
             timer_off("JK: K");
         }
     }
