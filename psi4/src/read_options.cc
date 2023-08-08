@@ -192,7 +192,7 @@ int read_options(const std::string &name, Options &options, bool suppress_printi
     /*- What algorithm to use for the SCF computation. See Table :ref:`SCF
     Convergence & Algorithm <table:conv_scf>` for default algorithm for
     different calculation types. -*/
-    options.add_str("SCF_TYPE", "PK", "DIRECT DF MEM_DF DISK_DF PK OUT_OF_CORE CD GTFOCK DFDIRJ+COSX DFDIRJ+LINK");
+    options.add_str("SCF_TYPE", "PK", "DIRECT DF MEM_DF DISK_DF PK OUT_OF_CORE CD GTFOCK DFDIRJ DFDIRJ+COSX DFDIRJ+LINK");
     /*- Algorithm to use for MP2 computation.
     See :ref:`Cross-module Redundancies <table:managedmethods>` for details. -*/
     options.add_str("MP2_TYPE", "DF", "DF CONV CD");
@@ -1446,7 +1446,7 @@ int read_options(const std::string &name, Options &options, bool suppress_printi
         options.add_double("INTS_TOLERANCE", 1E-12);
         /*- The type of guess orbitals. See :ref:`sec:scfguess` for what the options mean and
          what the defaults are. -*/
-        options.add_str("GUESS", "AUTO", "AUTO CORE GWH SAD SADNO SAP HUCKEL READ");
+        options.add_str("GUESS", "AUTO", "AUTO CORE GWH SAD SADNO SAP HUCKEL MODHUCKEL READ");
         /*- Mix the HOMO/LUMO in UHF or UKS to break alpha/beta spatial symmetry.
         Useful to produce broken-symmetry unrestricted solutions.
         Notice that this procedure is defined only for calculations in C1 symmetry. -*/
@@ -1681,6 +1681,11 @@ int read_options(const std::string &name, Options &options, bool suppress_printi
         options.add_int("COSX_RADIAL_POINTS_FINAL", 35);
         /*- Screening criteria for integrals and intermediates in COSX -*/
         options.add_double("COSX_INTS_TOLERANCE", 1.0E-11);
+        /*- Controls SCF iteration behavior for the larger (i.e., final) COSX grid.
+        -1 fully converges the SCF on the final grid if possible, ending early if |scf__maxiter| total SCF iterations are reached (failure).
+        0 disables the final COSX grid entirely.
+        n runs up to n iterations on the final COSX grid, ending early if SCF convergence is reached (success) or if |scf__maxiter| total SCF iterations are reached (failure). -*/
+        options.add_int("COSX_MAXITER_FINAL", 1);
         /*- Screening criteria for shell-pair densities in COSX !expert -*/
         options.add_double("COSX_DENSITY_TOLERANCE", 1.0E-10);
         /*- Screening criteria for basis function values on COSX grids !expert -*/

@@ -66,6 +66,7 @@ import numpy as np
 
 import qcelemental as qcel
 from psi4 import core
+from psi4 import extras
 from psi4.driver import qcdb
 
 from . import optproc
@@ -636,14 +637,17 @@ def pcm_helper(block: str):
     """
     import pcmsolver
 
-    with NamedTemporaryFile(mode="w+t", delete=True) as fl:
+    # delete=True works for Unix but not for Windows
+    with NamedTemporaryFile(mode="w+t", delete=False) as fl:
         fl.write(block)
         fl.flush()
         parsed_pcm = pcmsolver.parse_pcm_input(fl.name)
+        extras.register_scratch_file(fl.name)
 
     with NamedTemporaryFile(mode="w+t", delete=False) as fl:
         fl.write(parsed_pcm)
         core.set_local_option("PCM", "PCMSOLVER_PARSED_FNAME", fl.name)
+        extras.register_scratch_file(fl.name)  # retain with -m (messy) option
 
 
 def _basname(name: str) -> str:
@@ -1562,8 +1566,11 @@ def _core_erisieve_build(
         do_csam: bool = False
     ) -> core.ERISieve:
     """
-    Constructs a Psi4 ERISieve object from an input basis set, with an optional cutoff threshold for
+    This function previously constructed a Psi4 ERISieve object from an input basis set, with an optional cutoff threshold for
     ERI screening and an optional input to enable CSAM screening (over Schwarz screening).
+
+    However, as the ERISieve class was removed from Psi4 in v1.9, the function now throws with an UpgradeHelper
+    exception, and lets the user know to use TwoBodyAOInt instead.
 
     Parameters
     ----------
@@ -1585,12 +1592,7 @@ def _core_erisieve_build(
     >>> sieve = psi4.core.ERISieve.build(bas, cutoff, csam)
     """
 
-    warnings.warn(
-        "`ERISieve` is deprecated in favor of `TwoBodyAOInt`, and will be removed as soon as Psi4 v1.9 is released.\n",
-        category=FutureWarning,
-        stacklevel=2)
-
-    return core.ERISieve(orbital_basis, cutoff, do_csam)
+    raise UpgradeHelper("ERISieve", "TwoBodyAOInt", 1.8, " The ERISieve class has been removed and replaced with the TwoBodyAOInt class. ERISieve.build(orbital_basis, cutoff, do_csam) can be replaced with the command sequence factory = psi4.core.IntegralFactory(basis); factory.eri(0).")
 
 
 core.ERISieve.build = _core_erisieve_build
