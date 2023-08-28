@@ -217,6 +217,78 @@ void DFHelper::initialize() {
         outfile->Printf("Exiting DFHelper::initialize\n");
     }
 }
+
+
+void DFHelper::initialize(double eta) {
+
+    eta_ = eta;
+
+    if (debug_) {
+        outfile->Printf("Entering DFHelper lr ::initialize\n");
+    }
+    timer_on("DFH: initialize()");
+
+    // have the algorithm specified before init
+    if (method_.compare("DIRECT") && method_.compare("STORE") && method_.compare("DIRECT_iaQ")) {
+        std::stringstream error;
+        error << "DFHelper:initialize: specified method (" << method_ << ") is incorrect";
+        throw PSIEXCEPTION(error.str().c_str());
+    }
+
+    // workflow holders
+    direct_iaQ_ = (!method_.compare("DIRECT_iaQ") ? true : false);
+    direct_ = (!method_.compare("DIRECT") ? true : false);
+
+    // did we get enough memory for at least the metric?
+    if (naux_ * naux_ > memory_) {
+        std::stringstream error;
+        error << "DFHelper: The Coulomb metric requires at least " << naux_ * naux_ * 8 / (1024 * 1024 * 1024.0)
+              << "[GiB].  We need that plus some more, but we only got " << memory_ * 8 / (1024 * 1024 * 1024.0)
+              << "[GiB].";
+        throw PSIEXCEPTION(error.str().c_str());
+    }
+
+    // if metric power is not zero, prepare it
+    if (!(std::fabs(mpower_ - 0.0) < 1e-13)) (hold_met_ ? prepare_metric_core() : prepare_metric());
+
+    // if metric power for omega integrals is not zero, prepare its metric
+    if (do_wK_) {
+        if (!(std::fabs(wmpower_ - 0.0) < 1e-13) && (std::fabs(mpower_ - 0.0) < 1e-13))
+            (hold_met_ ? prepare_metric_core() : prepare_metric());
+    }
+
+    // prepare sparsity masks
+    prepare_sparsity(eta_);
+
+    // figure out AO_core
+    AO_core(true);
+
+    // prepare AOs for STORE method
+    if (AO_core_) {
+        if (do_wK_) {
+            prepare_AO_wK_core();
+        } else {  // It is possible to reformulate the expression for the
+            //   coulomb matrix to save memory in case do_wK_ is
+            //   is true, but do_K_ is false. This code isn't written
+            prepare_AO_core(eta_);
+        }
+    } else if (!direct_ && !direct_iaQ_) {
+        prepare_AO();
+        if (do_wK_) {
+            std::stringstream error;
+            error << "DFHelper: not equipped to do wK out of core. \nPlease supply more memory or remove scf_type Mem_DF from the imput file";
+            throw PSIEXCEPTION(error.str().c_str());
+            //prepare_AO_wK();
+        }
+    }
+
+    built_ = true;
+    timer_off("DFH: initialize()");
+
+    if (debug_) {
+        outfile->Printf("Exiting DFHelper::initialize\n");
+    }
+}
 void DFHelper::AO_core(bool set_AO_core=true) {
     prepare_sparsity();
 
@@ -488,6 +560,7 @@ void DFHelper::prepare_sparsity(double eta) {
                     if (omu >= onu) {
                         size_t index = mu * (nnu * nmu * nnu + nnu) + nu * (nmu * nnu + 1);
                         double val = fabs(buffer[index] - buffer_sr[index]);
+               //         outfile->Printf("prepare_sparsity %d %d %d %d %12.6f %12.6f\n`",MU,NU,mu,nu,buffer[index],buffer_sr[index]);
                         max_val = std::max(val, max_val);
                         if (shell_max_vals[MU * pshells_ + NU] <= val) {
                             shell_max_vals[MU * pshells_ + NU] = val;
@@ -690,7 +763,7 @@ void DFHelper::prepare_AO(double eta) {
         // compute
         timer_on("DFH: Total Workflow");
         timer_on("DFH: AO Construction");
-        compute_sparse_pQq_blocking_p(eta_, start, stop, Mp, eri);
+        compute_sparse_pQq_blocking_p(eta_, start, stop, Mp, eri, eri_sr);
         timer_off("DFH: AO Construction");
 
         // loop and contract
@@ -837,6 +910,7 @@ void DFHelper::prepare_AO_core() {
 }
 
 void DFHelper::prepare_AO_core(double eta) {
+    outfile->Printf(" dfhelper prepare_AO_core begin\n");   
     // get each thread an eri object
     std::shared_ptr<BasisSet> zero = BasisSet::zero_ao_basis_set();
     auto rifactory = std::make_shared<IntegralFactory>(aux_, zero, primary_, primary_);
@@ -868,8 +942,11 @@ void DFHelper::prepare_AO_core(double eta) {
 
     // allocate final AO vector
     if (direct_iaQ_) {
+        outfile->Printf(" dfhelper prepare_AO_core direct_iaQ_\n");
         Ppq_ = std::unique_ptr<double[]>(new double[naux_ * nbf_ * nbf_]);
     } else {
+        outfile->Printf(" dfhelper prepare_AO_core no direct_iaQ_\n");
+
         Ppq_ = std::unique_ptr<double[]>(new double[big_skips_[nbf_]]);
     }
 
@@ -879,9 +956,11 @@ void DFHelper::prepare_AO_core(double eta) {
     if (direct_iaQ_ || direct_) {
         timer_on("DFH: AO Construction");
         if (direct_iaQ_) {
-            compute_dense_Qpq_blocking_Q(eta_, 0, Qshells_ - 1, &Ppq_[0], eri);
+            outfile->Printf(" dfhelper prepare_AO_core direct_iaQ_ compute_dense_Qpq_blocking_Q\n");
+            compute_dense_Qpq_blocking_Q(eta_, 0, Qshells_ - 1, &Ppq_[0], eri, eri_sr);
         } else {
-            compute_sparse_pQq_blocking_p(eta_, 0, pshells_ - 1, &Ppq_[0], eri);
+            outfile->Printf(" dfhelper prepare_AO_core compute_sparse_pQq_blocking_p\n");
+            compute_sparse_pQq_blocking_p(eta_, 0, pshells_ - 1, &Ppq_[0], eri, eri_sr);
         }
         timer_off("DFH: AO Construction");
 
@@ -908,11 +987,13 @@ void DFHelper::prepare_AO_core(double eta) {
 
             // compute
             timer_on("DFH: AO Construction");
-            compute_sparse_pQq_blocking_p_symm(eta_, start, stop, Mp, eri);
+            outfile->Printf(" dfhelper prepare_AO_core compute_sparse_pQq_blocking_p_symm\n");        
+            compute_sparse_pQq_blocking_p_symm(eta_, start, stop, Mp, eri, eri_sr);
             timer_off("DFH: AO Construction");
 
             // contract metric
             timer_on("DFH: AO-Met. Contraction");
+            outfile->Printf(" dfhelper prepare_AO_core contract_metric_AO_core_symm\n");
             contract_metric_AO_core_symm(Mp, ppq, metp, begin, end);
             timer_off("DFH: AO-Met. Contraction");
         }
@@ -1111,7 +1192,7 @@ void DFHelper::prepare_AO_wK_core(double eta) {
         if ( wcombine_ ) {
             // computes (Q|mn) and (Q|w|mn)
             timer_on("DFH: AO Construction");
-            compute_sparse_pQq_blocking_p_symm_abw(eta_, start,stop, M1p, M2p, eri, weri);
+            compute_sparse_pQq_blocking_p_symm_abw(eta_, start,stop, M1p, M2p, eri, weri, eri_sr);
             timer_off("DFH: AO Construction");
             // computes  [J^{-1.0}](Q|mn)
             timer_on("DFH: AO-Met. Contraction");
@@ -1122,7 +1203,7 @@ void DFHelper::prepare_AO_wK_core(double eta) {
         } else {
 
             timer_on("DFH: AO Construction");
-            compute_sparse_pQq_blocking_p_symm(eta_, start, stop, M1p, eri);
+            compute_sparse_pQq_blocking_p_symm(eta_, start, stop, M1p, eri, eri_sr);
             timer_off("DFH: AO Construction");
 
             // contract full metric inverse computes  [J^{-1.0}](Q|mn)
@@ -1137,7 +1218,7 @@ void DFHelper::prepare_AO_wK_core(double eta) {
     
             // compute (A|w|mn)
             timer_on("DFH: wAO Construction");
-            compute_sparse_pQq_blocking_p_symm(eta_, start, stop, M1p, weri);
+            compute_sparse_pQq_blocking_p_symm(eta_, start, stop, M1p, weri, eri_sr);
             timer_off("DFH: wAO Construction");
     
             timer_on("DFH: wAO Copy");
@@ -1621,21 +1702,22 @@ void DFHelper::compute_dense_Qpq_blocking_Q(const size_t start, const size_t sto
 }
 
 void DFHelper::compute_dense_Qpq_blocking_Q(double eta, const size_t start, const size_t stop, double* Mp,
-                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri) {
+                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr) {
     // Here, we compute dense AO integrals in the Qpq memory layout.
     // Sparsity and permutational symmetry are used in the computation,
     // but not in the resulting tensor.
 
-    auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
+//  auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
 
-    eta_ = eta;
-    std::vector<std::pair<double, double>> exp_coeff;
-    exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
+//  eta_ = eta;
+//  std::vector<std::pair<double, double>> exp_coeff;
+//  exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
 
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
-    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
-    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
+//  std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
+//  eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
 
     size_t begin = Qshell_aggs_[start];
     size_t end = Qshell_aggs_[stop + 1] - 1;
@@ -1667,17 +1749,26 @@ void DFHelper::compute_dense_Qpq_blocking_Q(double eta, const size_t start, cons
 #endif
         size_t nummu = primary_->shell(MU).nfunction();
         for (size_t NU = 0; NU < pshells_; NU++) {
+//            outfile->Printf("Beginning new NU iteration: %d\n",NU);
             size_t numnu = primary_->shell(NU).nfunction();
             if (!schwarz_shell_mask_[MU * pshells_ + NU]) {
                 continue;
             }
+//            outfile->Printf("In the new NU iteration: %d\n",NU);
             for (size_t Pshell = start; Pshell <= stop; Pshell++) {
+//              outfile->Printf("compute_dense_Qpq_blocking_Q INIT %d %d %d \n",MU,NU,Pshell);
                 size_t PHI = aux_->shell(Pshell).function_index();
                 size_t numP = aux_->shell(Pshell).nfunction();
+//              outfile->Printf("compute_dense_Qpq_blocking_Q ZERO %d %d %d \n",MU,NU,Pshell);
                 eri[rank]->compute_shell(Pshell, 0, MU, NU);
                 buffer[rank] = eri[rank]->buffer();
+//              outfile->Printf("compute_dense_Qpq_blocking_Q HALF %d %d %d \n",MU,NU,Pshell);
                 eri_sr[rank]->compute_shell(Pshell, 0, MU, NU);
                 buffer_sr[rank] = eri_sr[rank]->buffer();
+//              outfile->Printf("compute_dense_Qpq_blocking_Q BEGIN %d %d %d \n",MU,NU,Pshell);
+
+                outfile->Printf("MemDFJK Qmnp %d %d %d %12.8f\n",MU,NU, Pshell, buffer[rank][0]-buffer_sr[rank][0]);
+
                 for (size_t mu = 0; mu < nummu; mu++) {
                     size_t omu = primary_->shell(MU).function_index() + mu;
                     for (size_t nu = 0; nu < numnu; nu++) {
@@ -1689,12 +1780,14 @@ void DFHelper::compute_dense_Qpq_blocking_Q(double eta, const size_t start, cons
                             Mp[(PHI + P - begin) * nbf_ * nbf_ + omu * nbf_ + onu] =
                                 Mp[(PHI + P - begin) * nbf_ * nbf_ + onu * nbf_ + omu] =
                                     buffer[rank][P * nummu * numnu + mu * numnu + nu] - buffer_sr[rank][P * nummu * numnu + mu * numnu + nu];
+//                          outfile->Printf("compute_dense_Qpq_blocking_Q %d %d %d %d %d %d %12.6f %12.6f\n",MU,mu,NU,nu,Pshell,P,buffer[rank][P * nummu * numnu + mu * numnu + nu],buffer_sr[rank][P * nummu * numnu + mu * numnu + nu]);
                         }
                     }
                 }
             }
         }
     }
+//  outfile->Printf("compute_dense_Qpq_blocking_Q done");
 }
 void DFHelper::compute_sparse_pQq_blocking_Q(const size_t start, const size_t stop, double* Mp,
                                              std::vector<std::shared_ptr<TwoBodyAOInt>> eri) {
@@ -1753,17 +1846,18 @@ void DFHelper::compute_sparse_pQq_blocking_Q(const size_t start, const size_t st
 }
 
 void DFHelper::compute_sparse_pQq_blocking_Q(double eta, const size_t start, const size_t stop, double* Mp,
-                                             std::vector<std::shared_ptr<TwoBodyAOInt>> eri) {
-    std::vector<std::pair<double, double>> exp_coeff;
-    eta_ = eta;
-    exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
+                                             std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                             std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr) {
+//    std::vector<std::pair<double, double>> exp_coeff;
+//    eta_ = eta;
+//    exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
 
-    auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
+//    auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
 
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
-    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
-    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
+//    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
+//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
 
     size_t begin = Qshell_aggs_[start];
     size_t end = Qshell_aggs_[stop + 1] - 1;
@@ -1815,12 +1909,14 @@ void DFHelper::compute_sparse_pQq_blocking_Q(double eta, const size_t start, con
                             Mp[(big_skips_[omu] * block_size) / naux_ + (PHI + P - begin) * small_skips_[omu] +
                                schwarz_fun_index_[omu * nbf_ + onu] - 1] =
                                 buffer[rank][P * nummu * numnu + mu * numnu + nu] - buffer_sr[rank][P * nummu * numnu + mu * numnu + nu];
+                            outfile->Printf("compute_sparse_pQq_blocking_Q %d %d %d %d %12.6f %12.6f\n",MU,NU,Pshell,mu,buffer[rank][P * nummu * numnu + mu * numnu + nu],buffer_sr[rank][P * nummu * numnu + mu * numnu + nu]);
                         }
                     }
                 }
             }
         }
     }
+    outfile->Printf("compute_sparse_pQq_blocking_Q done");
 }
 void DFHelper::compute_sparse_pQq_blocking_p(const size_t start, const size_t stop, double* Mp,
                                              std::vector<std::shared_ptr<TwoBodyAOInt>> eri) {
@@ -1882,17 +1978,18 @@ void DFHelper::compute_sparse_pQq_blocking_p(const size_t start, const size_t st
 }
 
 void DFHelper::compute_sparse_pQq_blocking_p(double eta, const size_t start, const size_t stop, double* Mp,
-                                             std::vector<std::shared_ptr<TwoBodyAOInt>> eri) {
-    std::vector<std::pair<double, double>> exp_coeff;
-    eta_ = eta;
-    exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
+                                             std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                             std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr) {
+//    std::vector<std::pair<double, double>> exp_coeff;
+//    eta_ = eta;
+//    exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
 
-    auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
+//    auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
 
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
-    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
-    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
+//    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
+//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
  
     size_t begin = pshell_aggs_[start];
     size_t end = pshell_aggs_[stop + 1] - 1;
@@ -1947,12 +2044,14 @@ void DFHelper::compute_sparse_pQq_blocking_p(double eta, const size_t start, con
                             Mp[big_skips_[omu] - startind + (PHI + P) * small_skips_[omu] +
                                schwarz_fun_index_[omu * nbf_ + onu] - 1] =
                                 buffer[rank][P * nummu * numnu + mu * numnu + nu] - buffer_sr[rank][P * nummu * numnu + mu * numnu + nu];
+                            outfile->Printf("compute_sparse_pQq_blocking_p %d %d %d %d %12.6f %12.6f\n",MU,NU,Pshell,mu,buffer[rank][P * nummu * numnu + mu * numnu + nu],buffer_sr[rank][P * nummu * numnu + mu * numnu + nu]);
                         }
                     }
                 }
             }
         }
     }
+    outfile->Printf("compute_sparse_pQq_blocking_p done");
 }
 void DFHelper::compute_sparse_pQq_blocking_p_symm(const size_t start, const size_t stop, double* Mp,
                                                   std::vector<std::shared_ptr<TwoBodyAOInt>> eri) {
@@ -2020,17 +2119,18 @@ void DFHelper::compute_sparse_pQq_blocking_p_symm(const size_t start, const size
 }
 
 void DFHelper::compute_sparse_pQq_blocking_p_symm(double eta, const size_t start, const size_t stop, double* Mp,
-                                                  std::vector<std::shared_ptr<TwoBodyAOInt>> eri) {
-    std::vector<std::pair<double, double>> exp_coeff;
-    eta_ = eta;
-    exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
+                                                  std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                                  std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr) {
+//    std::vector<std::pair<double, double>> exp_coeff;
+//    eta_ = eta;
+//    exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
 
-    auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
+//    auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
 
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
-    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
-    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
+//    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
+//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
 
     size_t begin = pshell_aggs_[start];
     size_t end = pshell_aggs_[stop + 1] - 1;
@@ -2090,12 +2190,14 @@ void DFHelper::compute_sparse_pQq_blocking_p_symm(double eta, const size_t start
                             size_t jump = schwarz_fun_index_[omu * nbf_ + onu] - schwarz_fun_index_[omu * nbf_ + omu];
                             size_t ind1 = symm_big_skips_[omu] - startind + (PHI + P) * symm_small_skips_[omu] + jump;
                             Mp[ind1] = buffer[rank][P * nummu * numnu + mu * numnu + nu] - buffer_sr[rank][P * nummu * numnu + mu * numnu + nu];
+                            outfile->Printf("compute_sparse_pQq_blocking_p_symm %d %d %d %d %12.6f %12.6f\n`",MU,NU,Pshell,mu,buffer[rank][P * nummu * numnu + mu * numnu + nu],buffer_sr[rank][P * nummu * numnu + mu * numnu + nu]);
                         }
                     }
                 }
             }
         }
     } // ends MU loop
+    outfile->Printf("compute_sparse_pQq_blocking_p_symm done");
 }
 void DFHelper::compute_sparse_pQq_blocking_p_symm_abw(const size_t start, const size_t stop, double* just_Mp, double* param_Mp,
                                                   std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
@@ -2170,18 +2272,19 @@ void DFHelper::compute_sparse_pQq_blocking_p_symm_abw(const size_t start, const 
 
 void DFHelper::compute_sparse_pQq_blocking_p_symm_abw(double eta, const size_t start, const size_t stop, double* just_Mp, double* param_Mp,
                                                   std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                                  std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr,
                                                   std::vector<std::shared_ptr<TwoBodyAOInt>> weri
 ) {
-    std::vector<std::pair<double, double>> exp_coeff;
-    eta_ = eta;
-    exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
+//    std::vector<std::pair<double, double>> exp_coeff;
+//    eta_ = eta;
+//    exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
 
-    auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
+//    auto rifactory = std::make_shared<IntegralFactory>(primary_, primary_, primary_, primary_);
 
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
-    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
-    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
+//    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
+//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
 
     size_t begin = pshell_aggs_[start];
     size_t end = pshell_aggs_[stop + 1] - 1;
@@ -2251,6 +2354,7 @@ void DFHelper::compute_sparse_pQq_blocking_p_symm_abw(double eta, const size_t s
             }
         }
     } // ends MU loop
+    
 }
 void DFHelper::grab_AO(const size_t start, const size_t stop, double* Mp) {
     size_t begin = Qshell_aggs_[start];
@@ -3099,11 +3203,15 @@ void DFHelper::transform(double eta) {
                 ;  // pass
             } else if (direct_iaQ_) {
                 timer_on("DFH: Total Workflow");
-                compute_dense_Qpq_blocking_Q(eta_, start, stop, Mp, eri);
+                outfile->Printf(" test transform  compute_dense_Qpq_blocking_Q start");
+                compute_dense_Qpq_blocking_Q(eta_, start, stop, Mp, eri, eri_sr);
+                outfile->Printf(" test transform  compute_dense_Qpq_blocking_Q done");
                 timer_off("DFH: Total Workflow");
             } else if (direct_) {
                 timer_on("DFH: Total Workflow");
-                compute_sparse_pQq_blocking_Q(eta_, start, stop, Mp, eri);
+                outfile->Printf(" test transform  compute_sparse_pQq_blocking_Q start");
+                compute_sparse_pQq_blocking_Q(eta_, start, stop, Mp, eri, eri_sr);
+                outfile->Printf(" test transform  compute_sparse_pQq_blocking_Q done");
                 timer_off("DFH: Total Workflow");
             } else {
                 timer_on("DFH: Grabbing AOs");
@@ -3127,7 +3235,9 @@ void DFHelper::transform(double eta) {
                 timer_on("DFH: 1st Contraction");
                 if (direct_iaQ_) {
                     // (qb)(Q|pq)->(Q|pb)
+                    outfile->Printf(" test tranform first contraction C_DGEMM %d %d ",block_size, bsize);
                     C_DGEMM('N', 'N', block_size * nbf_, bsize, nbf_, 1.0, &Mp[bump], nbf_, Bp, bsize, 0.0, Tp, bsize);
+                    outfile->Printf(" test tranform first contraction C_DGEMM done");
                 } else {
                     // (bq)(p|Qq)->(p|Qb)
                     first_transform_pQq(bsize, bcount, block_size, Mp, Tp, Bp, C_buffers);
@@ -3190,7 +3300,9 @@ void DFHelper::transform(double eta) {
                     // put the transformations away
                     timer_on("DFH: MO to disk, " + transf_name);
                     if (direct_iaQ_) {
+                        outfile->Printf(" test tranform put_transformations_Qpq start");              
                         put_transformations_Qpq(begin, end, wsize, bsize, Fp, count + k, bleft);
+                        outfile->Printf(" test tranform put_transformations_Qpq done");
                     } else {
                         put_transformations_pQq(begin, end, block_size, bcount, wsize, bsize, Np, Fp, count + k, bleft);
                     }
@@ -3235,9 +3347,10 @@ void DFHelper::transform(double eta) {
 
                     double* Lp = kv.second.get();
                     C_DCOPY(l * r * Q, Lp, 1, Np, 1);
-
+                    outfile->Printf(" test transform Metric Contractions C_DGEMM start");
                     // (Q|ia) (PQ) -> (ia|Q)
                     C_DGEMM('T', 'N', l * r, Q, Q, 1.0, Np, l * r, metp, Q, 0.0, Lp, Q);
+                    outfile->Printf(" test transform Metric Contractions C_DGEMM done");
                 }
 
             } else {
@@ -4290,8 +4403,10 @@ void DFHelper::compute_JK(std::vector<SharedMatrix> Cleft, std::vector<SharedMat
                 compute_J_combined(D, J, M1p, T1p, T2p, C_buffers, bcount, block_size);
             } else {
                 if (lr_symmetric) {
+                    outfile->Printf(" dfhelper compute_JK compute_J_symm\n");
                     compute_J_symm(D, J, Mp, T1p, T2p, C_buffers, bcount, block_size);
                 } else {
+                    outfile->Printf(" dfhelper compute_JK compute_J\n");
                     compute_J(D, J, Mp, T1p, T2p, C_buffers, bcount, block_size);
                 }
             }

@@ -212,6 +212,8 @@ class PSI_API DFHelper {
     /// Initialize the object
     void initialize();
 
+    void initialize(double eta);
+
     /// Prepare screening and indexing metadata used for Schwarz screening.
     void prepare_sparsity();
     void prepare_sparsity(double eta);
@@ -375,7 +377,7 @@ class PSI_API DFHelper {
 
     double eta_;
 
-    bool debug_ = false;
+    bool debug_ = true;
     // Can we early-exit prepare_sparsity?
     bool sparsity_prepared_ = false;
     int print_lvl_ = 1;
@@ -413,16 +415,21 @@ class PSI_API DFHelper {
     void prepare_AO(double eta);
     void prepare_AO_core(double eta);
     void compute_dense_Qpq_blocking_Q(double eta, const size_t start, const size_t stop, double* Mp,
-                                      std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
+                                      std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                      std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
     void compute_sparse_pQq_blocking_Q(double eta, const size_t start, const size_t stop, double* Mp,
-                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
+                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
     void compute_sparse_pQq_blocking_p(double eta, const size_t start, const size_t stop, double* Mp,
-                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
+                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
     void compute_sparse_pQq_blocking_p_symm(double eta, const size_t start, const size_t stop, double* Mp,
-                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
+                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
+                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
     void compute_sparse_pQq_blocking_p_symm_abw(double eta, const size_t start, const size_t stop, double* just_Mp, double* param_Mp,
                                         std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
-                                        std::vector<std::shared_ptr<TwoBodyAOInt>> weri);
+                                        std::vector<std::shared_ptr<TwoBodyAOInt>> weri,
+                                        std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
 
 
     void contract_metric_AO_core_symm(double* Qpq, double* Ppq, double* metp, size_t begin, size_t end);

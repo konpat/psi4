@@ -371,7 +371,7 @@ void OneBodyAOInt::compute(double eta, SharedMatrix &result) {
     const auto bs1_equiv_bs2 = (bs1_ == bs2_);
 
     double sign = is_antisymmetric() ? -1 : 1;
-//    outfile->Printf("In special OneBodyAOInt->compute 1\n");
+//  outfile->Printf("In special OneBodyAOInt->compute 1\n");
     for (auto pair : shellpairs_) {
         int p1 = pair.first;
         int p2 = pair.second;
@@ -546,7 +546,7 @@ void OneBodyAOInt::compute_shell_reg(double eta, int sh1, int sh2) {
    // outfile->Printf("test compute shell reg \n");
     const auto &s1 = bs1_->l2_shell(sh1);
     const auto &s2 = bs2_->l2_shell(sh2);
-    compute_pair_reg(eta_, s1, s2);
+    compute_pair_reg(eta, s1, s2);
 }
 
 void OneBodyAOInt::compute_shell_erf(double omega, int sh1, int sh2) {

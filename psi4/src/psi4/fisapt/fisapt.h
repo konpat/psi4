@@ -224,12 +224,15 @@ class CPHF_FISAPT {
     int maxiter_;
     // JK Object
     std::shared_ptr<JK> jk_;
+    std::shared_ptr<JK> jklr_;
     // => Monomer A Problem <= //
 
     // Perturbation applied to A
     std::shared_ptr<Matrix> w_A_;
+    std::shared_ptr<Matrix> w_A_lr_;
     // Response of A
     std::shared_ptr<Matrix> x_A_;
+    std::shared_ptr<Matrix> x_A_lr_;
     // Active occ orbital coefficients of A
     std::shared_ptr<Matrix> Cocc_A_;
     // Active vir orbital coefficients of A
@@ -243,8 +246,11 @@ class CPHF_FISAPT {
 
     // Perturbation applied to B
     std::shared_ptr<Matrix> w_B_;
+    std::shared_ptr<Matrix> w_B_lr_;
     // Response of B
     std::shared_ptr<Matrix> x_B_;
+    std::shared_ptr<Matrix> x_B_lr_;
+
     // Active occ orbital coefficients of B
     std::shared_ptr<Matrix> Cocc_B_;
     // Active vir orbital coefficients of B

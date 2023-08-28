@@ -255,7 +255,7 @@ MultipolePotentialInt_reg::MultipolePotentialInt_reg(double eta, std::vector<Sph
 MultipolePotentialInt_reg::~MultipolePotentialInt_reg() { delete[] buffer_; }
 
 void MultipolePotentialInt_reg::set_charge_field(std::vector<std::pair<double, std::array<double, 3>>>& Zxyz) {
-    engine0_->set_params(Zxyz);
+//  engine0_->set_params(Zxyz);
     Zxyz_ = Zxyz;
 }
 

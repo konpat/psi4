@@ -908,13 +908,13 @@ void DiskDFJK::initialize_JK_core(double eta) {
         // loop over all the blocks of P
         for (int p_block_idx = 0; p_block_idx < p_blocks.size(); ++p_block_idx) {
             // compute the
-            outfile->Printf(" jklr initialize_JK_core  test 1, %d %d \n\n", mn_block_idx, p_block_idx);
+  //          outfile->Printf(" jklr initialize_JK_core  test 1, %d %d \n\n", mn_block_idx, p_block_idx);
             eri_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
-            outfile->Printf(" jklr initialize_JK_core  test 2, %d %d \n\n", mn_block_idx, p_block_idx);
+  //          outfile->Printf(" jklr initialize_JK_core  test 2, %d %d \n\n", mn_block_idx, p_block_idx);
 
             if (mn_block_idx < mn_blocks_sr.size()) {
                 f12g12_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
-                outfile->Printf(" jklr initialize_JK_core  test 3, %d %d \n\n", mn_block_idx, p_block_idx);
+  //              outfile->Printf(" jklr initialize_JK_core  test 3, %d %d \n\n", mn_block_idx, p_block_idx);
         //        const auto* buffer_sr = buffers_sr[0];
 
                 const auto& p_block_sr = p_blocks_sr[p_block_idx];
@@ -941,6 +941,8 @@ void DiskDFJK::initialize_JK_core(double eta) {
                     const int p = p_pair.first;
                     const int num_p = auxiliary_->shell(p).nfunction();
                     const int p_start = auxiliary_->shell(p).function_index();
+
+                    outfile->Printf("DiskDFJK Qmnp %d %d %d %12.8f\n",m,n, p, buffer[0]-buffer_sr[0]);
 
                     for (int im = 0; im < num_m; ++im) {
                         const int im_idx = m_start + im;
@@ -1590,6 +1592,7 @@ void DiskDFJK::initialize_JK_disk(double eta) {
                 const auto *buffer = buffers[0];
                 const auto *buffer_sr = buffers_sr[0];
 
+                outfile->Printf("DiskDFJK Qmnp %d %d %d %12.8f\n",MU,NU, P, buffer[0]-buffer_sr[0]);
                 for (int dm = 0; dm < nummu; dm++) {
                     int omu = mu + dm;
                     for (int dn = 0; dn < numnu; dn++) {

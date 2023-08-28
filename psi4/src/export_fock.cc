@@ -180,6 +180,9 @@ void export_fock(py::module &m) {
 
     typedef void (DFHelper::*transform_no_args)();
     typedef void (DFHelper::*transform_one_arg)(double);
+    typedef void (DFHelper::*initialize_zero_arg)();
+    typedef void (DFHelper::*initialize_with_arg)(double);
+
     py::class_<DFHelper, std::shared_ptr<DFHelper>>(m, "DFHelper", "docstring")
         .def(py::init<std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet> >())
         .def(py::init<double, std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet> >())
@@ -199,7 +202,8 @@ void export_fock(py::module &m) {
         .def("set_MO_core", &DFHelper::set_MO_core)
         .def("get_MO_core", &DFHelper::get_MO_core)
         .def("add_space", &DFHelper::add_space)
-        .def("initialize", &DFHelper::initialize)
+        .def("initialize", initialize_zero_arg(&DFHelper::initialize))
+        .def("initialize", initialize_with_arg(&DFHelper::initialize), "eta"_a)
         .def("print_header", &DFHelper::print_header)
         .def("add_transformation", &DFHelper::add_transformation, "name"_a, "key1"_a, "key2"_a, "order"_a = "Qpq")
         .def("transform", transform_no_args(&DFHelper::transform))
