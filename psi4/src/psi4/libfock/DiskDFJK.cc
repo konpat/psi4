@@ -891,6 +891,10 @@ void DiskDFJK::initialize_JK_core(double eta) {
 // sfp = screen function pair. The actual output index, taking into account
 //                             whether or not functions have been screened.
 
+
+    std::vector<std::pair<int, int>> pairzero;
+    pairzero.push_back(std::pair<int, int>(0, 0));
+
 #pragma omp parallel for schedule(dynamic) num_threads(nthread)
     for (size_t mn_block_idx = 0; mn_block_idx < mn_blocks.size(); mn_block_idx++) {
 #ifdef _OPENMP
@@ -904,30 +908,81 @@ void DiskDFJK::initialize_JK_core(double eta) {
         const auto &buffers_sr = f12g12_[rank]->buffers();
         if (mn_block_idx < mn_blocks_sr.size()) {
             const auto& mn_block_sr = mn_blocks_sr[mn_block_idx];
+        } else {
+            const auto& mn_block_sr = pairzero;
         }
+              
+        
         // loop over all the blocks of P
         for (int p_block_idx = 0; p_block_idx < p_blocks.size(); ++p_block_idx) {
             // compute the
-  //          outfile->Printf(" jklr initialize_JK_core  test 1, %d %d \n\n", mn_block_idx, p_block_idx);
+            outfile->Printf(" jklr initialize_JK_core  compute_shell_blocks eri, %d %d \n\n", mn_block_idx, p_block_idx);
             eri_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
-  //          outfile->Printf(" jklr initialize_JK_core  test 2, %d %d \n\n", mn_block_idx, p_block_idx);
+   //         outfile->Printf(" jklr initialize_JK_core  test 2, %d %d \n\n", mn_block_idx, p_block_idx);
 
             if (mn_block_idx < mn_blocks_sr.size()) {
+                outfile->Printf(" jklr initialize_JK_core  compute_shell_blocks f12g12, %d %d \n\n", mn_block_idx, p_block_idx);
                 f12g12_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
   //              outfile->Printf(" jklr initialize_JK_core  test 3, %d %d \n\n", mn_block_idx, p_block_idx);
         //        const auto* buffer_sr = buffers_sr[0];
 
                 const auto& p_block_sr = p_blocks_sr[p_block_idx];
+            } else {
+                const auto& p_block_sr = pairzero;
             }
+
             const auto* buffer = buffers[0];
 
             const auto& p_block = p_blocks[p_block_idx];
 
             const auto* buffer_sr = buffers_sr[0];
 
-       //     const auto& p_block_sr = p_blocks_sr[p_block_idx];
 
-            for (const auto& mn_pair : mn_block) {
+//            for (const auto& mn_pair : mn_block) {
+//                const int m = mn_pair.first;
+//                const int n = mn_pair.second;
+//                const int num_m = primary_->shell(m).nfunction();
+//                const int num_n = primary_->shell(n).nfunction();
+//                const int m_start = primary_->shell(m).function_index();
+//                const int n_start = primary_->shell(n).function_index();
+//                const int num_mn = num_m * num_n;
+//
+//                for (const auto& p_pair : p_block) {
+//                    // remember that this vector will only contain one shell pair
+//                    const int p = p_pair.first;
+//                    const int num_p = auxiliary_->shell(p).nfunction();
+//                    const int p_start = auxiliary_->shell(p).function_index();
+//
+//                    outfile->Printf("DiskDFJK Qmnp %d %d %d %12.8f\n",m,n, p, buffer[0]-buffer_sr[0]);
+//
+//                    for (int im = 0; im < num_m; ++im) {
+//                        const int im_idx = m_start + im;
+//
+//                        for (int in = 0; in < num_n; ++in) {
+//                            const int in_idx = n_start + in;
+//                            const int imn_idx = im * num_n + in;
+//                            const int sfp_idx = im_idx > in_idx ? (im_idx * (im_idx + 1)) / 2 + in_idx :
+//                                               (in_idx * (in_idx + 1))/2 + im_idx;
+//
+//                            int sfp;
+//
+//                            // note the assignment in the following conditional
+//                            if ((sfp = schwarz_fun_pairs[sfp_idx]) > -1) {
+//                                for (int ip = 0; ip < num_p; ++ip) {
+//                                    const int ip_idx = p_start + ip;
+//                                    Qmnp[ip_idx][sfp] = buffer[ip * num_mn + imn_idx] - buffer_sr[ip * num_mn + imn_idx];
+//                                }
+//                            }
+//
+//                        }
+//                    }
+//
+//                    buffer += num_mn * num_p;
+//                }
+//            }
+
+            for (int mn_pair_idx = 0; mn_pair_idx < mn_block.size(); ++mn_pair_idx) {
+                const auto& mn_pair = mn_block[mn_pair_idx];
                 const int m = mn_pair.first;
                 const int n = mn_pair.second;
                 const int num_m = primary_->shell(m).nfunction();
@@ -935,17 +990,72 @@ void DiskDFJK::initialize_JK_core(double eta) {
                 const int m_start = primary_->shell(m).function_index();
                 const int n_start = primary_->shell(n).function_index();
                 const int num_mn = num_m * num_n;
+    
+        //        if (mn_block_idx < mn_blocks_sr.size()) {
+                const auto& mn_block_sr = mn_blocks_sr[mn_block_idx];
+                const auto& mn_pair_sr = mn_block_sr[mn_pair_idx];
+                const int m_sr = mn_pair_sr.first;
+                const int n_sr = mn_pair_sr.second;
+                const int num_m_sr = primary_->shell(m_sr).nfunction();
+                const int num_n_sr = primary_->shell(n_sr).nfunction();
+                const int m_start_sr = primary_->shell(m_sr).function_index();
+                const int n_start_sr = primary_->shell(n_sr).function_index();
+                const int num_mn_sr = num_m_sr * num_n_sr;
+                if (mn_block_idx >= mn_blocks_sr.size()) {
+                    const int m_sr = pairzero[0].first;
+                    const int n_sr = pairzero[0].second;
+                    const int num_m_sr = 0;
+                    const int num_n_sr = 0;
+                    const int m_start_sr = 0;
+                    const int n_start_sr = 0;
+                    const int num_mn_sr = 0;
+                }
 
-                for (const auto& p_pair : p_block) {
+       //         const auto& mn_pair_sr = mn_blocks_sr[mn_block_idx];
+      //          const int m_sr = mn_pair_sr.first;
+      //          const int n_sr = mn_pair_sr.second;
+      //          const int num_m_sr = primary_->shell(m_sr).nfunction();
+      //          const int num_n_sr = primary_->shell(n_sr).nfunction();
+      //          const int m_start_sr = primary_->shell(m_sr).function_index();
+      //          const int n_start_sr = primary_->shell(n_sr).function_index();
+      //          const int num_mn_sr = num_m_sr * num_n_sr;
+
+                for (int p_pair_idx = 0; p_pair_idx < p_block.size(); ++p_pair_idx) {
+                    const auto& p_pair = p_block[p_pair_idx];
                     // remember that this vector will only contain one shell pair
                     const int p = p_pair.first;
                     const int num_p = auxiliary_->shell(p).nfunction();
                     const int p_start = auxiliary_->shell(p).function_index();
 
-                    outfile->Printf("DiskDFJK Qmnp %d %d %d %12.8f\n",m,n, p, buffer[0]-buffer_sr[0]);
+                //    if (mn_block_idx < mn_blocks_sr.size()) {
+                    const auto& p_block_sr = p_blocks_sr[p_block_idx];
+                    const auto& p_pair_sr = p_block_sr[p_pair_idx];
+                    const int p_sr = p_pair_sr.first;
+                    const int num_p_sr = auxiliary_->shell(p_sr).nfunction();
+                    const int p_start_sr = auxiliary_->shell(p_sr).function_index();
+                    if (mn_block_idx >= mn_blocks_sr.size()) {
+                        const int p_sr = pairzero[0].first;
+                        const int num_p_sr = 0;
+                        const int p_start_sr = 0;
+                    }                               
+
+           //         const auto& p_pair_sr = p_blocks_sr[p_block_idx];
+           //         const int p_sr = p_pair_sr.first;
+           //         const int num_p_sr = auxiliary_->shell(p_sr).nfunction();
+          //          const int p_start_sr = auxiliary_->shell(p_sr).function_index();
+
+                    outfile->Printf("DiskDFJK Qmnp %d %d %d %d %d %d %12.8f\n",m,n, p,m_sr, n_sr, p_sr, buffer[0]-buffer_sr[0]);
 
                     for (int im = 0; im < num_m; ++im) {
                         const int im_idx = m_start + im;
+
+                 //       const int im_idx_sr = m_start_sr + im;
+                   //     if (mn_block_idx < mn_blocks_sr.size()) {
+                            const int im_idx_sr = m_start_sr + im;
+                        if (mn_block_idx >= mn_blocks_sr.size()) {
+                            const int im_idx_sr = 0;
+                        }
+                //        const int im_idx_sr = m_start_sr + im;          
 
                         for (int in = 0; in < num_n; ++in) {
                             const int in_idx = n_start + in;
@@ -953,13 +1063,43 @@ void DiskDFJK::initialize_JK_core(double eta) {
                             const int sfp_idx = im_idx > in_idx ? (im_idx * (im_idx + 1)) / 2 + in_idx :
                                                (in_idx * (in_idx + 1))/2 + im_idx;
 
+                       //     if (mn_block_idx < mn_blocks_sr.size()) {
+                                const int in_idx_sr = n_start_sr + in;
+                                const int imn_idx_sr = im * num_n_sr + in;
+                                const int sfp_idx_sr = im_idx_sr > in_idx_sr ? (im_idx_sr * (im_idx_sr + 1)) / 2 + in_idx_sr :
+                                               (in_idx_sr * (in_idx_sr + 1))/2 + im_idx_sr;
+                            if (mn_block_idx >= mn_blocks_sr.size()) {
+                                const int in_idx_sr = 0;
+                                const int imn_idx_sr = 0;
+                                const int sfp_idx_sr = 0;
+                            }
+
+                     //       const int in_idx_sr = n_start_sr + in;
+                     //       const int imn_idx_sr = im * num_n_sr + in;
+                     //       const int sfp_idx_sr = im_idx_sr > in_idx_sr ? (im_idx_sr * (im_idx_sr + 1)) / 2 + in_idx_sr :
+                     //                          (in_idx_sr * (in_idx_sr + 1))/2 + im_idx_sr;
+                 //           if (mn_block_sr = pairzero) {
+                 //              const int in_idx_sr = 0;
+                 //              const int imn_idx_sr = 0;
+                 //              const int sfp_idx_sr = 0;
+                 //           }
+                                 
+
                             int sfp;
 
                             // note the assignment in the following conditional
                             if ((sfp = schwarz_fun_pairs[sfp_idx]) > -1) {
                                 for (int ip = 0; ip < num_p; ++ip) {
                                     const int ip_idx = p_start + ip;
-                                    Qmnp[ip_idx][sfp] = buffer[ip * num_mn + imn_idx] - buffer_sr[ip * num_mn + imn_idx];
+
+                              //      const int ip_idx_sr = p_start_sr + ip;
+                           //         if (mn_block_idx < mn_blocks_sr.size()) {
+                                        const int ip_idx_sr = p_start_sr + ip;
+                                    if (mn_block_idx >= mn_blocks_sr.size()) {
+                                        const int ip_idx_sr = 0;
+                                    }
+
+                                    Qmnp[ip_idx][sfp] = buffer[ip * num_mn + imn_idx] - buffer_sr[ip * num_mn_sr + imn_idx_sr];
                                 }
                             }
 
