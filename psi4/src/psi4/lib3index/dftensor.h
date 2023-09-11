@@ -55,6 +55,8 @@ class PSI_API FittingMetric {
     /// Range separation omega (0.0 if not used)
     double omega_;
 
+    double eta_;
+
     /// The fitting metric or symmetric inverse
     SharedMatrix metric_;
     /// The indices (per irrep) of pivots
@@ -73,6 +75,8 @@ class PSI_API FittingMetric {
    public:
     /// DF Fitting Metric
     FittingMetric(std::shared_ptr<BasisSet> aux, bool force_C1 = false);
+    FittingMetric(double eta, std::shared_ptr<BasisSet> aux, bool force_C1 = false);
+
     /// DF Fitting Metric
     FittingMetric(std::shared_ptr<BasisSet> aux, double omega, bool force_C1 = false);
     /// Poisson Fitting Metric
@@ -102,18 +106,26 @@ class PSI_API FittingMetric {
 
     /// Build the raw fitting metric (sets up indices to canonical)
     void form_fitting_metric();
+    void form_fitting_metric(double eta);
+
     /// Build the Cholesky half inverse metric (calls form_fitting_metric)
     void form_cholesky_inverse();
+    void form_cholesky_inverse(double eta);
     /// Build the QR half inverse metric (calls form_fitting_metric)
     void form_QR_inverse(double tol = 1.0E-10);
+    void form_QR_inverse(double eta, double tol);
     /// Build the eigendecomposed half inverse metric (calls form_fitting_metric)
     void form_eig_inverse(double tol = 1.0E-10);
+    void form_eig_inverse(double eta, double tol);
     /// Build the full inverse metric. NOT RECOMMENDED: Numerical stability (calls form_fitting_metric)
     void form_full_inverse();
+    void form_full_inverse(double eta);
     /// Build the full inverse metric.
     void form_full_eig_inverse(double tol = 1.0E-10);
+    void form_full_eig_inverse(double eta, double tol);
     /// Build the full metric's Cholesky factor. RECOMMENDED: Numerical stability
     void form_cholesky_factor();
+    void form_cholesky_factor(double eta);
 };
 
 class PSI_API DFTensor {

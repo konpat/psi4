@@ -134,6 +134,17 @@ void export_fock(py::module &m) {
         .def("Imo", &DFTensor::Imo, "doctsring")
         .def("Idfmo", &DFTensor::Idfmo, "doctsring");
 
+    typedef void (FittingMetric::*form_fitting_metric_no_arg)();
+    typedef void (FittingMetric::*form_fitting_metric_one_arg)(double);
+    typedef void (FittingMetric::*form_cholesky_inverse_no_arg)();
+    typedef void (FittingMetric::*form_cholesky_inverse_one_arg)(double);
+    typedef void (FittingMetric::*form_QR_inverse_no_args)(double);
+    typedef void (FittingMetric::*form_QR_inverse_one_arg)(double, double);
+    typedef void (FittingMetric::*form_eig_inverse_no_args)(double);
+    typedef void (FittingMetric::*form_eig_inverse_one_arg)(double, double);
+    typedef void (FittingMetric::*form_full_inverse_no_args)();
+    typedef void (FittingMetric::*form_full_inverse_one_arg)(double);
+
     py::class_<FittingMetric, std::shared_ptr<FittingMetric>>(m, "FittingMetric", "docstring")
         .def(py::init<std::shared_ptr<BasisSet>, bool>())
         .def("get_algorithm", &FittingMetric::get_algorithm, "docstring")
@@ -142,11 +153,16 @@ void export_fock(py::module &m) {
         .def("get_metric", &FittingMetric::get_metric, "docstring")
         .def("get_pivots", &FittingMetric::get_pivots, "docstring")
         .def("get_reverse_pivots", &FittingMetric::get_reverse_pivots, "docstring")
-        .def("form_fitting_metric", &FittingMetric::form_fitting_metric, "docstring")
-        .def("form_cholesky_inverse", &FittingMetric::form_cholesky_inverse, "docstring")
-        .def("form_QR_inverse", &FittingMetric::form_QR_inverse, "docstring")
-        .def("form_eig_inverse", &FittingMetric::form_eig_inverse, "docstring")
-        .def("form_full_inverse", &FittingMetric::form_full_inverse, "docstring");
+        .def("form_fitting_metric", form_fitting_metric_no_arg(&FittingMetric::form_fitting_metric), "docstring")
+        .def("form_fitting_metric", form_fitting_metric_one_arg(&FittingMetric::form_fitting_metric), "docstring", "eta"_a)
+        .def("form_cholesky_inverse", form_cholesky_inverse_no_arg(&FittingMetric::form_cholesky_inverse), "docstring")
+        .def("form_cholesky_inverse", form_cholesky_inverse_one_arg(&FittingMetric::form_cholesky_inverse), "docstring", "eta"_a)
+        .def("form_QR_inverse", form_QR_inverse_no_args(&FittingMetric::form_QR_inverse), "docstring")
+        .def("form_QR_inverse", form_QR_inverse_one_arg(&FittingMetric::form_QR_inverse), "eta"_a, "docstring"_a)
+        .def("form_eig_inverse", form_eig_inverse_no_args(&FittingMetric::form_eig_inverse), "docstring")
+        .def("form_eig_inverse", form_eig_inverse_one_arg(&FittingMetric::form_eig_inverse), "eta"_a, "docstring"_a)
+        .def("form_full_inverse", form_full_inverse_no_args(&FittingMetric::form_full_inverse), "docstring")
+        .def("form_full_inverse", form_full_inverse_one_arg(&FittingMetric::form_full_inverse), "docstring", "eta"_a);
 
     py::class_<SOMCSCF, std::shared_ptr<SOMCSCF>>(m, "SOMCSCF", "docstring")
         // .def(init<std::shared_ptr<JK>, SharedMatrix, SharedMatrix >())

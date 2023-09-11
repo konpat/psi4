@@ -131,7 +131,7 @@ void MemDFJK::preiterations(double eta) {
     // we need to prepare the AOs here, and that's it.
     // DFHelper takes care of all the housekeeping
 
-    dfh_->initialize();
+    dfh_->initialize(eta_);
 }
 void MemDFJK::compute_JK() {
 

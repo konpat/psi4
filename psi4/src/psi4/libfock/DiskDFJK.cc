@@ -1102,7 +1102,6 @@ void DiskDFJK::initialize_JK_core(double eta) {
                                     Qmnp[ip_idx][sfp] = buffer[ip * num_mn + imn_idx] - buffer_sr[ip * num_mn_sr + imn_idx_sr];
                                 }
                             }
-
                         }
                     }
 
@@ -1115,8 +1114,8 @@ void DiskDFJK::initialize_JK_core(double eta) {
 
     timer_on("JK: (A|Q)^-1/2");
 
-    auto Jinv = std::make_shared<FittingMetric>(auxiliary_, true);
-    Jinv->form_eig_inverse(condition_);
+    auto Jinv = std::make_shared<FittingMetric>(eta_, auxiliary_, true);
+    Jinv->form_eig_inverse(eta_, condition_);
     double** Jinvp = Jinv->get_metric()->pointer();
 
     timer_off("JK: (A|Q)^-1/2");
