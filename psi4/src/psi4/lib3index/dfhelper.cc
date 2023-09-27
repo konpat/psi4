@@ -1767,7 +1767,7 @@ void DFHelper::compute_dense_Qpq_blocking_Q(double eta, const size_t start, cons
                 buffer_sr[rank] = eri_sr[rank]->buffer();
 //              outfile->Printf("compute_dense_Qpq_blocking_Q BEGIN %d %d %d \n",MU,NU,Pshell);
 
-                outfile->Printf("MemDFJK Qmnp %d %d %d %12.8f\n",MU,NU, Pshell, buffer[rank][0]-buffer_sr[rank][0]);
+//                outfile->Printf("MemDFJK Qmnp %d %d %d %12.8f\n",MU,NU, Pshell, buffer[rank][0]-buffer_sr[rank][0]);
 
                 for (size_t mu = 0; mu < nummu; mu++) {
                     size_t omu = primary_->shell(MU).function_index() + mu;
@@ -2044,7 +2044,7 @@ void DFHelper::compute_sparse_pQq_blocking_p(double eta, const size_t start, con
                             Mp[big_skips_[omu] - startind + (PHI + P) * small_skips_[omu] +
                                schwarz_fun_index_[omu * nbf_ + onu] - 1] =
                                 buffer[rank][P * nummu * numnu + mu * numnu + nu] - buffer_sr[rank][P * nummu * numnu + mu * numnu + nu];
-                            outfile->Printf("compute_sparse_pQq_blocking_p %d %d %d %d %12.6f %12.6f\n",MU,NU,Pshell,mu,buffer[rank][P * nummu * numnu + mu * numnu + nu],buffer_sr[rank][P * nummu * numnu + mu * numnu + nu]);
+               //             outfile->Printf("compute_sparse_pQq_blocking_p %d %d %d %d %12.6f %12.6f\n",MU,NU,Pshell,mu,buffer[rank][P * nummu * numnu + mu * numnu + nu],buffer_sr[rank][P * nummu * numnu + mu * numnu + nu]);
                         }
                     }
                 }
@@ -2190,7 +2190,7 @@ void DFHelper::compute_sparse_pQq_blocking_p_symm(double eta, const size_t start
                             size_t jump = schwarz_fun_index_[omu * nbf_ + onu] - schwarz_fun_index_[omu * nbf_ + omu];
                             size_t ind1 = symm_big_skips_[omu] - startind + (PHI + P) * symm_small_skips_[omu] + jump;
                             Mp[ind1] = buffer[rank][P * nummu * numnu + mu * numnu + nu] - buffer_sr[rank][P * nummu * numnu + mu * numnu + nu];
-                            outfile->Printf("compute_sparse_pQq_blocking_p_symm %d %d %d %d %12.6f %12.6f\n`",MU,NU,Pshell,mu,buffer[rank][P * nummu * numnu + mu * numnu + nu],buffer_sr[rank][P * nummu * numnu + mu * numnu + nu]);
+               //             outfile->Printf("compute_sparse_pQq_blocking_p_symm %d %d %d %d %12.6f %12.6f\n`",MU,NU,Pshell,mu,buffer[rank][P * nummu * numnu + mu * numnu + nu],buffer_sr[rank][P * nummu * numnu + mu * numnu + nu]);
                         }
                     }
                 }
