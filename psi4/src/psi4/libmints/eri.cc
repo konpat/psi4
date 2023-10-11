@@ -714,7 +714,7 @@ Libint2F12::~Libint2F12(){};
 /// F12G12
 
 Libint2F12G12::Libint2F12G12(std::vector<std::pair<double, double>> exp_coeff, const IntegralFactory *integral,
-                             double screening_threshold, int deriv, bool use_shell_pairs, bool needs_exchange)
+                             double screening_threshold, int deriv, bool use_shell_pairs, bool needs_exchange, bool switch_engine)
     : Libint2TwoElectronInt(integral, deriv, screening_threshold, use_shell_pairs, needs_exchange) {
     timer_on("Libint2F12G12::Libint2F12G12");
     int max_am =
@@ -745,8 +745,13 @@ Libint2F12G12::Libint2F12G12(std::vector<std::pair<double, double>> exp_coeff, c
                               braket_);
     }
     max_am = bra_same_ ? basis1()->max_am() : ket_same_ ? basis3()->max_am() : 0;
-    schwarz_engine_ = libint2::Engine(libint2::Operator::cgtg_x_coulomb, max_nprim, max_am, 0, max_precision, exp_coeff,
+    if (switch_engine) {
+        schwarz_engine_ = libint2::Engine(libint2::Operator::coulomb, max_nprim, max_am, 0, max_precision, libint2::operator_traits<libint2::Operator::coulomb>::default_params(), libint2::BraKet::xx_xx);
+    }
+    else {
+        schwarz_engine_ = libint2::Engine(libint2::Operator::cgtg_x_coulomb, max_nprim, max_am, 0, max_precision, exp_coeff,
                                       libint2::BraKet::xx_xx);
+    }
     common_init();
     timer_off("Libint2F12G12::Libint2F12G12");
 }

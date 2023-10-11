@@ -502,8 +502,10 @@ class PSI_API DFHelper {
     std::vector<std::pair<double, std::string>> metric_keys_;
     // Create J and write it to disk.
     void prepare_metric();
+    void prepare_metric(double eta);
     // Create J and cache it in metrics_.
     void prepare_metric_core();
+    void prepare_metric_core(double eta);
     double* metric_prep_core(double m_pow);
     std::string return_metfile(double m_pow);
     std::string compute_metric(double m_pow);

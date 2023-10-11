@@ -1349,7 +1349,7 @@ void export_mints(py::module& m) {
         .def("f12", &IntegralFactory::f12, "Returns an F12 integral object", "cf"_a, "deriv"_a = 0,
              "use_shell_pairs"_a = true)
         .def("f12g12", &IntegralFactory::f12g12, "Returns an F12G12 integral object", "cf"_a, "deriv"_a = 0,
-             "use_shell_pairs"_a = true)
+             "use_shell_pairs"_a = true, "switch_engine"_a = false)
         .def("f12_double_commutator", &IntegralFactory::f12_double_commutator,
              "Returns an F12 double commutator integral object", "cf"_a, "deriv"_a = 0, "use_shell_pairs"_a = true)
         .def("f12_squared", &IntegralFactory::f12_squared, "Returns an F12 squared integral object", "cf"_a,

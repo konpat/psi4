@@ -519,7 +519,7 @@ class PSI_API IntegralFactory {
 
     /// Returns an F12G12 integral object
     virtual std::unique_ptr<TwoBodyAOInt> f12g12(std::vector<std::pair<double, double>> exp_coeff, int deriv = 0,
-                                 bool use_shell_pairs = true);
+                                 bool use_shell_pairs = true, bool switch_engine = false);
 
     /// Returns an F12 double commutator integral object
     virtual std::unique_ptr<TwoBodyAOInt> f12_double_commutator(std::vector<std::pair<double, double>> exp_coeff, int deriv = 0,

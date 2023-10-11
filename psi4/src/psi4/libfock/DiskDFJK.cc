@@ -106,8 +106,11 @@ void DiskDFJK::common_init(double eta) {
     auto tmperi = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
     n_function_pairs_ = tmperi->function_pairs().size();
 
-    auto tmpf12g12 = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+    bool switch_engine=true;
+    auto tmpf12g12 = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
     n_function_pairs_sr_ = tmpf12g12->function_pairs().size();
+
+    outfile->Printf("DiskDFJK common_init n_function_pairs_ n_function_pairs_sr_ %8d %8d",n_function_pairs_,n_function_pairs_sr_);
 
 }
 size_t DiskDFJK::memory_estimate() {
@@ -565,8 +568,9 @@ void DiskDFJK::preiterations(double eta) {
 
     std::vector<std::pair<double, double>> exp_coeff;
     exp_coeff.push_back(std::pair<double, double>(eta_,1.0));
+    bool switch_engine=true;
     f12g12_.clear();
-    f12g12_.emplace_back(rifactory->f12g12(exp_coeff));
+    f12g12_.emplace_back(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
     for (int Q = 1; Q < df_ints_num_threads_; Q++) {
         f12g12_.emplace_back(f12g12_.front()->clone());
     }
@@ -916,12 +920,12 @@ void DiskDFJK::initialize_JK_core(double eta) {
         // loop over all the blocks of P
         for (int p_block_idx = 0; p_block_idx < p_blocks.size(); ++p_block_idx) {
             // compute the
-            outfile->Printf(" jklr initialize_JK_core  compute_shell_blocks eri, %d %d \n\n", mn_block_idx, p_block_idx);
+            //outfile->Printf(" jklr initialize_JK_core  compute_shell_blocks eri, %d %d \n\n", mn_block_idx, p_block_idx);
             eri_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
    //         outfile->Printf(" jklr initialize_JK_core  test 2, %d %d \n\n", mn_block_idx, p_block_idx);
 
             if (mn_block_idx < mn_blocks_sr.size()) {
-                outfile->Printf(" jklr initialize_JK_core  compute_shell_blocks f12g12, %d %d \n\n", mn_block_idx, p_block_idx);
+            //    outfile->Printf(" jklr initialize_JK_core  compute_shell_blocks f12g12, %d %d \n\n", mn_block_idx, p_block_idx);
                 f12g12_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
   //              outfile->Printf(" jklr initialize_JK_core  test 3, %d %d \n\n", mn_block_idx, p_block_idx);
         //        const auto* buffer_sr = buffers_sr[0];
@@ -953,7 +957,7 @@ void DiskDFJK::initialize_JK_core(double eta) {
                     const int num_p = auxiliary_->shell(p).nfunction();
                     const int p_start = auxiliary_->shell(p).function_index();
 
-                    outfile->Printf("DiskDFJK Qmnp %d %d %d %12.8f\n",m,n, p, buffer[0]-buffer_sr[0]);
+                    // outfile->Printf("DiskDFJK Qmnp %d %d %d %12.8f\n",m,n, p, buffer[0]-buffer_sr[0]);
 
                     for (int im = 0; im < num_m; ++im) {
                         const int im_idx = m_start + im;

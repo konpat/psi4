@@ -393,7 +393,7 @@ class Libint2F12Squared : public Libint2F12 {
 class Libint2F12G12 : public Libint2TwoElectronInt {
    public:
     Libint2F12G12(std::vector<std::pair<double, double>> exp_coeff, const IntegralFactory *integral,
-                  double screening_threshold, int deriv = 0, bool use_shell_pairs = false, bool needs_exchange = false);
+                  double screening_threshold, int deriv = 0, bool use_shell_pairs = false, bool needs_exchange = false, bool switch_engine = false);
     ~Libint2F12G12() override;
     Libint2F12G12 *clone() const override { return new Libint2F12G12(*this); }
 
