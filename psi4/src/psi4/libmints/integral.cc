@@ -288,8 +288,9 @@ std::unique_ptr<TwoBodyAOInt> IntegralFactory::f12_squared(std::vector<std::pair
 }
 
 std::unique_ptr<TwoBodyAOInt> IntegralFactory::f12g12(std::vector<std::pair<double, double>> exp_coeff, int deriv,
-                                      bool use_shell_pairs) {
-    return std::make_unique<Libint2F12G12>(exp_coeff, this, deriv, use_shell_pairs);
+                                      bool use_shell_pairs, bool switch_engine) {
+    auto threshold = Process::environment.options.get_double("INTS_TOLERANCE");
+    return std::make_unique<Libint2F12G12>(exp_coeff, this, threshold, deriv, use_shell_pairs, false, switch_engine);
 }
 
 std::unique_ptr<TwoBodyAOInt> IntegralFactory::f12_double_commutator(std::vector<std::pair<double, double>> exp_coeff, int deriv,

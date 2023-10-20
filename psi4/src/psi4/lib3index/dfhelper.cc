@@ -249,12 +249,12 @@ void DFHelper::initialize(double eta) {
     }
 
     // if metric power is not zero, prepare it
-    if (!(std::fabs(mpower_ - 0.0) < 1e-13)) (hold_met_ ? prepare_metric_core() : prepare_metric());
+    if (!(std::fabs(mpower_ - 0.0) < 1e-13)) (hold_met_ ? prepare_metric_core(eta_) : prepare_metric(eta_));
 
     // if metric power for omega integrals is not zero, prepare its metric
     if (do_wK_) {
         if (!(std::fabs(wmpower_ - 0.0) < 1e-13) && (std::fabs(mpower_ - 0.0) < 1e-13))
-            (hold_met_ ? prepare_metric_core() : prepare_metric());
+            (hold_met_ ? prepare_metric_core(eta_) : prepare_metric(eta_));
     }
 
     // prepare sparsity masks
@@ -521,7 +521,8 @@ void DFHelper::prepare_sparsity(double eta) {
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri(screen_threads);
     eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(screen_threads);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+    bool switch_engine=true;
+    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
 #pragma omp parallel num_threads(screen_threads) if (nbf_ > 1000)
     {
@@ -714,7 +715,8 @@ void DFHelper::prepare_AO(double eta) {
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
     eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+    bool switch_engine=true;
+    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
     for(int rank = 1; rank < nthreads_; rank++) {
 	eri[rank] = std::shared_ptr<TwoBodyAOInt>(eri.front()->clone());
@@ -817,7 +819,8 @@ void DFHelper::prepare_AO_wK(double eta) {
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
     eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+    bool switch_engine=true;
+    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
 #pragma omp parallel num_threads(nthreads_)
     {
@@ -924,7 +927,8 @@ void DFHelper::prepare_AO_core(double eta) {
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
     eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+    bool switch_engine=true;
+    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
 #pragma omp parallel num_threads(nthreads_)
     {
@@ -1128,7 +1132,8 @@ void DFHelper::prepare_AO_wK_core(double eta) {
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
     eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+    bool switch_engine=true;
+    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
 #pragma omp parallel num_threads(nthreads_)
     {
@@ -1717,7 +1722,8 @@ void DFHelper::compute_dense_Qpq_blocking_Q(double eta, const size_t start, cons
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
 //    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
 //  std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-//  eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//  bool switch_engine=true;
+//  eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
     size_t begin = Qshell_aggs_[start];
     size_t end = Qshell_aggs_[stop + 1] - 1;
@@ -1857,7 +1863,8 @@ void DFHelper::compute_sparse_pQq_blocking_Q(double eta, const size_t start, con
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
 //    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//    bool switch_engine=true;
+//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
     size_t begin = Qshell_aggs_[start];
     size_t end = Qshell_aggs_[stop + 1] - 1;
@@ -1989,7 +1996,8 @@ void DFHelper::compute_sparse_pQq_blocking_p(double eta, const size_t start, con
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
 //    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//    bool switch_engine=true;
+//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
  
     size_t begin = pshell_aggs_[start];
     size_t end = pshell_aggs_[stop + 1] - 1;
@@ -2130,7 +2138,8 @@ void DFHelper::compute_sparse_pQq_blocking_p_symm(double eta, const size_t start
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
 //    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//    bool switch_engine=true;
+//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
     size_t begin = pshell_aggs_[start];
     size_t end = pshell_aggs_[stop + 1] - 1;
@@ -2284,7 +2293,8 @@ void DFHelper::compute_sparse_pQq_blocking_p_symm_abw(double eta, const size_t s
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
 //    eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
 //    std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+//    bool switch_engine=true;
+//    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
     size_t begin = pshell_aggs_[start];
     size_t end = pshell_aggs_[stop + 1] - 1;
@@ -2377,6 +2387,14 @@ void DFHelper::prepare_metric_core() {
     metrics_[1.0] = J.get_metric();
     timer_off("DFH: metric construction");
 }
+void DFHelper::prepare_metric_core(double eta) {
+    timer_on("DFH: metric construction");
+    FittingMetric J(aux_, true);
+    J.form_fitting_metric(eta);
+    metrics_[1.0] = J.get_metric();
+    metrics_[1.0]->print();
+    timer_off("DFH: metric construction");
+}
 double* DFHelper::metric_prep_core(double m_pow) {
     bool on = false;
     double power;
@@ -2404,6 +2422,22 @@ void DFHelper::prepare_metric() {
     FittingMetric J(aux_, true);
     J.form_fitting_metric();
     auto metric = J.get_metric();
+    auto Mp = metric->pointer()[0];
+
+    // create file
+    std::string filename = "metric.1.0";
+    filename_maker(filename, naux_, naux_, 1);
+    metric_keys_.emplace_back(1.0, filename);
+    // store
+    std::string putf = std::get<0>(files_[filename]);
+    put_tensor(putf, Mp, 0, naux_ - 1, 0, naux_ - 1, "wb");
+}
+void DFHelper::prepare_metric(double eta) {
+    // construct metric
+    FittingMetric J(aux_, true);
+    J.form_fitting_metric(eta);
+    auto metric = J.get_metric();
+    metric->print();
     auto Mp = metric->pointer()[0];
 
     // create file
@@ -3138,7 +3172,8 @@ void DFHelper::transform(double eta) {
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri(nthreads_);
     eri[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->eri());
     std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr(nthreads_);
-    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff));
+    bool switch_engine=true;
+    eri_sr[0] = std::shared_ptr<TwoBodyAOInt>(rifactory->f12g12(exp_coeff, 0, true, switch_engine));
 
 #pragma omp parallel num_threads(nthreads_)
     {
