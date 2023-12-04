@@ -4347,40 +4347,34 @@ void FISAPT::ind() {
     xA->scale(-1.0);
     xB->scale(-1.0);
 
-//    auto cphflr = std::make_shared<CPHF_FISAPT>();
-//    cphflr->delta_ = options_.get_double("D_CONVERGENCE");
-//    cphflr->maxiter_ = options_.get_int("MAXITER");
-//    cphflr->jklr = jklr;
+    auto cphflr = std::make_shared<CPHF_FISAPT>();
+    cphflr->delta_ = options_.get_double("D_CONVERGENCE");
+    cphflr->maxiter_ = options_.get_int("MAXITER");
+    cphflr->jk_ = jk_;   // These are AAAA/BBBB integrals, so we need full JK
 
-//    cphf->w_A_ = wB_lr;  // Reversal of convention
-//    cphf->Cocc_A_ = Cocc0A;
-//    cphf->Cvir_A_ = Cvir0A;
-//    cphf->eps_occ_A_ = eps_occ0A;
-//    cphf->eps_vir_A_ = eps_vir0A;
+    cphflr->w_A_ = wB_lr;  // Reversal of convention
+    cphflr->Cocc_A_ = Cocc0A;
+    cphflr->Cvir_A_ = Cvir0A;
+    cphflr->eps_occ_A_ = eps_occ0A;
+    cphflr->eps_vir_A_ = eps_vir0A;
 
-//    cphf->w_B_ = wA_lr;  // Reversal of convention
-//    cphf->Cocc_B_ = Cocc0B;
-//    cphf->Cvir_B_ = Cvir0B;
-//    cphf->eps_occ_B_ = eps_occ0B;
-//    cphf->eps_vir_B_ = eps_vir0B;
+    cphflr->w_B_ = wA_lr;  // Reversal of convention
+    cphflr->Cocc_B_ = Cocc0B;
+    cphflr->Cvir_B_ = Cvir0B;
+    cphflr->eps_occ_B_ = eps_occ0B;
+    cphflr->eps_vir_B_ = eps_vir0B;
 
-    // Gogo CPKS
+  // Gogo CPKS
 
-//    outfile->Printf("  test cphf before compute  \n\n");
-//    cphf->compute_cphf();
-//    outfile->Printf("  test cphf after compute  \n\n");
-//    std::shared_ptr<Matrix> xA_lr = cphf->x_A_lr_;
-//    std::shared_ptr<Matrix> xB_lr = cphf->x_B_lr_;
+    cphflr->compute_cphf();
+    
+    std::shared_ptr<Matrix> xA_lr = cphflr->x_A_;
+    std::shared_ptr<Matrix> xB_lr = cphflr->x_B_;
 
-//    outfile->Printf("  test cphf after compute matrices:  \n\n");
-//    xA_lr->print();
-//    xB_lr->print();
+  // Backward in Ed's convention
+    xA_lr->scale(-1.0);
+    xB_lr->scale(-1.0);
 
-    // Backward in Ed's convention
-//    xA_lr->scale(-1.0);
-//    xB_lr->scale(-1.0);
-
-//    outfile->Printf("  test cphf after scale  \n\n");
     // => Induction <= //
 
     double Ind20r_AB = 2.0 * xA->vector_dot(wB);
@@ -4395,10 +4389,8 @@ void FISAPT::ind() {
 
     outfile->Printf("  test exind 2 \n\n");
 
-//    double Ind20r_AB_lr = 2.0 * xA_lr->vector_dot(wB_lr);
-//    double Ind20r_BA_lr = 2.0 * xB_lr->vector_dot(wA_lr);
-    double Ind20r_AB_lr = 2.0 * xA->vector_dot(wB_lr);
-    double Ind20r_BA_lr = 2.0 * xB->vector_dot(wA_lr);
+    double Ind20r_AB_lr = 2.0 * xA_lr->vector_dot(wB_lr);
+    double Ind20r_BA_lr = 2.0 * xB_lr->vector_dot(wA_lr);
 
     double Ind20r_lr = Ind20r_AB_lr + Ind20r_BA_lr;
     scalars_["Ind20,r (A<-B) lr"] = Ind20r_AB_lr;
@@ -4435,26 +4427,22 @@ void FISAPT::ind() {
             outfile->Printf("    Exch-Ind20,r        AVG  = %18.12lf [Eh]\n", ExchInd20r);
             outfile->Printf("\n");
 
-//            ExchInd20r_ABpar_lr = 2.0 * xA_lr->vector_dot(uBpar_lr);
-//            ExchInd20r_BApar_lr = 2.0 * xB_lr->vector_dot(uApar_lr);
-            ExchInd20r_ABpar_lr = 2.0 * xA->vector_dot(uBpar_lr);
-            ExchInd20r_BApar_lr = 2.0 * xB->vector_dot(uApar_lr);
-
+            ExchInd20r_ABpar_lr = 2.0 * xA_lr->vector_dot(uBpar_lr);
+            ExchInd20r_BApar_lr = 2.0 * xB_lr->vector_dot(uApar_lr);
             ExchInd20rpar_lr = ExchInd20r_ABpar_lr + ExchInd20r_BApar_lr;
             outfile->Printf("    Exch-Ind20,r (A<-B) PAR lr  = %18.12lf [Eh]\n", ExchInd20r_ABpar_lr);
             outfile->Printf("    Exch-Ind20,r (B<-A) PAR lr  = %18.12lf [Eh]\n", ExchInd20r_BApar_lr);
             outfile->Printf("    Exch-Ind20,r        PAR lr  = %18.12lf [Eh]\n", ExchInd20rpar_lr);
             outfile->Printf("\n");
-//            ExchInd20r_ABperp_lr = 2.0 * xA_lr->vector_dot(uBperp_lr);
-//            ExchInd20r_BAperp_lr = 2.0 * xB_lr->vector_dot(uAperp_lr);
-            ExchInd20r_ABperp_lr = 2.0 * xA->vector_dot(uBperp_lr);
-            ExchInd20r_BAperp_lr = 2.0 * xB->vector_dot(uAperp_lr);
 
+            ExchInd20r_ABperp_lr = 2.0 * xA_lr->vector_dot(uBperp_lr);
+            ExchInd20r_BAperp_lr = 2.0 * xB_lr->vector_dot(uAperp_lr);
             ExchInd20rperp_lr = ExchInd20r_ABperp_lr + ExchInd20r_BAperp_lr;
             outfile->Printf("    Exch-Ind20,r (A<-B) PERP lr = %18.12lf [Eh]\n", ExchInd20r_ABperp_lr);
             outfile->Printf("    Exch-Ind20,r (B<-A) PERP lr = %18.12lf [Eh]\n", ExchInd20r_BAperp_lr);
             outfile->Printf("    Exch-Ind20,r        PERP lr = %18.12lf [Eh]\n", ExchInd20rperp_lr);
             outfile->Printf("\n");
+
             ExchInd20r_AB_lr = 0.5*(ExchInd20r_ABpar_lr+ExchInd20r_ABperp_lr);
             ExchInd20r_BA_lr = 0.5*(ExchInd20r_BApar_lr+ExchInd20r_BAperp_lr);
             ExchInd20r_lr = 0.5*(ExchInd20rpar_lr+ExchInd20rperp_lr);
@@ -4471,10 +4459,8 @@ void FISAPT::ind() {
             outfile->Printf("    Exch-Ind20,r        AVG  = %18.12lf [Eh]\n", ExchInd20r);
             outfile->Printf("\n");
 
-//            ExchInd20r_AB_lr = 2.0 * xA_lr->vector_dot(uB_lr);
-//            ExchInd20r_BA_lr = 2.0 * xB_lr->vector_dot(uA_lr);
-            ExchInd20r_AB_lr = 2.0 * xA->vector_dot(uB_lr);
-            ExchInd20r_BA_lr = 2.0 * xB->vector_dot(uA_lr);
+            ExchInd20r_AB_lr = 2.0 * xA_lr->vector_dot(uB_lr);
+            ExchInd20r_BA_lr = 2.0 * xB_lr->vector_dot(uA_lr);
 
             ExchInd20r_lr = ExchInd20r_AB_lr + ExchInd20r_BA_lr;
             outfile->Printf("    Exch-Ind20,r (A<-B) AVG  lr = %18.12lf [Eh]\n", ExchInd20r_AB_lr);
@@ -8603,10 +8589,10 @@ void FISAPT::fdisp() {
 
                     // > V,J,K < //
 
-                    C_DGER(na, nb, 1.0, &Sasp[0][s + sstart], ns, &Qbrp[0][r + rstart], nr, Vabp[0], nb);
-                    C_DGER(na, nb, 1.0, &Qasp[0][s + sstart], ns, &Sbrp[0][r + rstart], nr, Vabp[0], nb);
-                    C_DGER(na, nb, 1.0, &Qarp[0][r + rstart], nr, &SAbsp[0][s + sstart], ns, Vabp[0], nb);
-                    C_DGER(na, nb, 1.0, &SBarp[0][r + rstart], nr, &Qbsp[0][s + sstart], ns, Vabp[0], nb);
+                    C_DGER(na, nb, 1.0, &Sasp[0][s + sstart], ns, &Qbrp_lr[0][r + rstart], nr, Vabp[0], nb);
+                    C_DGER(na, nb, 1.0, &Qasp_lr[0][s + sstart], ns, &Sbrp[0][r + rstart], nr, Vabp[0], nb);
+                    C_DGER(na, nb, 1.0, &Qarp_lr[0][r + rstart], nr, &SAbsp[0][s + sstart], ns, Vabp[0], nb);
+                    C_DGER(na, nb, 1.0, &SBarp[0][r + rstart], nr, &Qbsp_lr[0][s + sstart], ns, Vabp[0], nb);
 
                     C_DGEMM('N', 'N', na, nb, nb, 1.0, Vabp[0], nb, UBp[0], nb, 0.0, Iabp[0], nb);
                     C_DGEMM('T', 'N', na, nb, na, 1.0, UAp[0], na, Iabp[0], nb, 0.0, V2abp[0], nb);

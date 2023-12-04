@@ -739,11 +739,11 @@ void DFHelper::prepare_AO(double eta) {
     if (!hold_met_) {
         metric = std::unique_ptr<double[]>(new double[naux_ * naux_]);
         metp = metric.get();
-        std::string filename = return_metfile(mpower_);
+        std::string filename = return_metfile_lr(mpower_, eta);
         get_tensor_(std::get<0>(files_[filename]), metp, 0, naux_ - 1, 0, naux_ - 1);
 
     } else
-        metp = metric_prep_core(mpower_);
+        metp = metric_prep_core(mpower_, eta);
 
     // prepare files
     AO_filename_maker(1);
@@ -978,10 +978,10 @@ void DFHelper::prepare_AO_core(double eta) {
         if (!hold_met_) {
             metric = std::unique_ptr<double[]>(new double[naux_ * naux_]);
             metp = metric.get();
-            std::string filename = return_metfile(mpower_);
+            std::string filename = return_metfile_lr(mpower_, eta);
             get_tensor_(std::get<0>(files_[filename]), metp, 0, naux_ - 1, 0, naux_ - 1);
         } else
-            metp = metric_prep_core(mpower_);
+            metp = metric_prep_core(mpower_, eta);
 
         for (size_t i = 0; i < psteps.size(); i++) {
             size_t start = std::get<0>(psteps[i]);
@@ -2391,8 +2391,8 @@ void DFHelper::prepare_metric_core(double eta) {
     timer_on("DFH: metric construction");
     FittingMetric J(aux_, true);
     J.form_fitting_metric(eta);
-    metrics_[1.0] = J.get_metric();
-    metrics_[1.0]->print();
+    metricslr_[1.0] = J.get_metric();
+    metricslr_[1.0]->print();
     timer_off("DFH: metric construction");
 }
 double* DFHelper::metric_prep_core(double m_pow) {
@@ -2416,6 +2416,28 @@ double* DFHelper::metric_prep_core(double m_pow) {
         metrics_[power] = J;
     }
     return metrics_[power]->pointer()[0];
+}
+double* DFHelper::metric_prep_core(double m_pow, double eta) {
+    bool on = false;
+    double power;
+    for (auto& kv : metricslr_) {
+        if (!(std::fabs(m_pow - kv.first) > 1e-13)) {
+            on = true;
+            power = kv.first;
+            break;
+        }
+    }
+    if (!on) {
+        power = m_pow;
+        SharedMatrix J = metricslr_[1.0];
+        if ( fabs(m_pow - 1.0) < 1e-13 ) {
+            return J->pointer()[0];
+        } else {
+            J->power(power, condition_);
+        }
+        metricslr_[power] = J;
+    }
+    return metricslr_[power]->pointer()[0];
 }
 void DFHelper::prepare_metric() {
     // construct metric
@@ -2441,9 +2463,9 @@ void DFHelper::prepare_metric(double eta) {
     auto Mp = metric->pointer()[0];
 
     // create file
-    std::string filename = "metric.1.0";
+    std::string filename = "metriclr.1.0";
     filename_maker(filename, naux_, naux_, 1);
-    metric_keys_.emplace_back(1.0, filename);
+    metriclr_keys_.emplace_back(1.0, filename);
     // store
     std::string putf = std::get<0>(files_[filename]);
     put_tensor(putf, Mp, 0, naux_ - 1, 0, naux_ - 1, "wb");
@@ -2460,6 +2482,20 @@ std::string DFHelper::return_metfile(double m_pow) {
     }
 
     if (!on) key = compute_metric(m_pow);
+    return key;
+}
+std::string DFHelper::return_metfile_lr(double m_pow, double eta) {
+    bool on = 0;
+    std::string key;
+    for (size_t i = 0; i < metriclr_keys_.size() && !on; i++) {
+        double power = std::get<0>(metriclr_keys_[i]);
+        if (std::fabs(power - m_pow) < 1e-12) {
+            key = std::get<1>(metriclr_keys_[i]);
+            on = 1;
+        }
+    }
+
+    if (!on) key = compute_metric_lr(m_pow, eta);
     return key;
 }
 std::string DFHelper::compute_metric(double m_pow) {
@@ -2488,6 +2524,33 @@ std::string DFHelper::compute_metric(double m_pow) {
         put_tensor(putf, metp, 0, naux_ - 1, 0, naux_ - 1, "wb");
     }
     return return_metfile(m_pow);
+}
+std::string DFHelper::compute_metric_lr(double m_pow, double eta) {
+    // ensure J
+    if (std::fabs(m_pow - 1.0) < 1e-13)
+        prepare_metric(eta);
+    else {
+        // get metric
+        auto metric = std::make_shared<Matrix>("met", naux_, naux_);
+        double* metp = metric->pointer()[0];
+        std::string filename = return_metfile_lr(1.0, eta);
+
+        // get and compute
+        get_tensor_(std::get<0>(files_[filename]), metp, 0, naux_ - 1, 0, naux_ - 1);
+        metric->power(m_pow, condition_);
+
+        // make new file
+        std::string name = "metriclr";
+        name.append(".");
+        name.append(std::to_string(m_pow));
+        filename_maker(name, naux_, naux_, 1);
+        metriclr_keys_.push_back(std::make_pair(m_pow, name));
+
+        // store
+        std::string putf = std::get<0>(files_[name]);
+        put_tensor(putf, metp, 0, naux_ - 1, 0, naux_ - 1, "wb");
+    }
+    return return_metfile_lr(m_pow, eta);
 }
 double* DFHelper::metric_inverse_prep_core() {
     bool on = false;
@@ -3365,10 +3428,10 @@ void DFHelper::transform(double eta) {
         if (!hold_met_) {
             metric = std::unique_ptr<double[]>(new double[naux_ * naux_]);
             metp = metric.get();
-            std::string filename = return_metfile(mpower_);
+            std::string filename = return_metfile_lr(mpower_, eta);
             get_tensor_(std::get<0>(files_[filename]), metp, 0, naux_ - 1, 0, naux_ - 1);
         } else
-            metp = metric_prep_core(mpower_);
+            metp = metric_prep_core(mpower_, eta);
 
         if (direct_iaQ_) {
             if (MO_core_) {

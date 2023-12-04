@@ -392,6 +392,7 @@ class PSI_API DFHelper {
     std::unique_ptr<double[]> Ppq_;
     // Maps x -> (P|Q) ^ x.
     std::map<double, SharedMatrix> metrics_;
+    std::map<double, SharedMatrix> metricslr_;
 
     // => in-core wK machinery <=
     std::unique_ptr<double[]> wPpq_;  // if do_wK_ holds (A|w|mn)
@@ -500,6 +501,7 @@ class PSI_API DFHelper {
 
     // => Coulomb metric handling <=
     std::vector<std::pair<double, std::string>> metric_keys_;
+    std::vector<std::pair<double, std::string>> metriclr_keys_;
     // Create J and write it to disk.
     void prepare_metric();
     void prepare_metric(double eta);
@@ -507,8 +509,11 @@ class PSI_API DFHelper {
     void prepare_metric_core();
     void prepare_metric_core(double eta);
     double* metric_prep_core(double m_pow);
+    double* metric_prep_core(double m_pow, double eta);
     std::string return_metfile(double m_pow);
+    std::string return_metfile_lr(double m_pow, double eta);
     std::string compute_metric(double m_pow);
+    std::string compute_metric_lr(double m_pow, double eta);
 
     double* metric_inverse_prep_core();
 
