@@ -1195,7 +1195,7 @@ int read_options(const std::string &name, Options &options, bool suppress_printi
         options.add_bool("FISAPT_CUBE_LINKIHOS", false);
         /*- Generate cube files for fragment density matrices? -*/
         options.add_bool("FISAPT_CUBE_DENSMAT", false);
-
+        options.add_str("RSEP_INT", "", "gau erf");
         // => F-SAPT Options <= //
 
         /*- Do an F-SAPT analysis? -*/
@@ -1367,7 +1367,7 @@ int read_options(const std::string &name, Options &options, bool suppress_printi
         Anthony Stone's GDMA program. See :ref:`GDMA <sec:gdma>` for more details. -*/
 
         /*- The order of multipole expansion on each site.  Currently limited to the same
-            order for all sites; for more advanced usage a user-provided GDMA data file
+ OMEGA        order for all sites; for more advanced usage a user-provided GDMA data file
             should be provided. -*/
         options.add_int("GDMA_LIMIT", 2);
         /*- The radii to be used, overriding the defaults.  Specified as an array
@@ -1394,6 +1394,8 @@ int read_options(const std::string &name, Options &options, bool suppress_printi
         /*- Omega scaling for Erf and Erfc.-*/
         options.add_double("OMEGA_ERF", 0.20);
         options.add_double("ETA", 0.0);
+        options.add_double("OMEGA", 0.0);
+        options.add_str("RSEP_INT", "", "gau erf");
     }
     if (name == "SCF" || options.read_globals()) {
         /*- MODULEDESCRIPTION Performs self consistent field (Hartree-Fock and

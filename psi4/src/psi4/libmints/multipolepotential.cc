@@ -421,21 +421,38 @@ MultipolePotentialInt_erf::MultipolePotentialInt_erf(double omega, std::vector<S
     set_chunks(nchunks);
     buffers_.resize(nchunk_);
 
+    int max_am = std::max(bs1->max_am(), bs2->max_am());
+    int max_nprim = std::max(bs1->max_nprimitive(), bs2->max_nprimitive());
+
+    std::vector<std::pair<double, std::array<double, 3>>> Zxyz;
+    for (int A = 0; A < bs1_->molecule()->natom(); A++) {
+        Zxyz.push_back({
+            (double)bs1_->molecule()->Z(A),
+            {bs1_->molecule()->x(A), bs1_->molecule()->y(A), bs1_->molecule()->z(A)}});
+    }
+
+    engine0_ = std::make_unique<libint2::Engine>(libint2::Operator::nuclear, max_nprim, max_am, 0);
+    engine0_->set_params(Zxyz);
 
     // Setup the initial field of partial charges
-    C = std::make_shared<Matrix>("Partial Charge Field (Z,x,y,z)", bs1_->molecule()->natom(), 4);
-    double **Cp = C->pointer();
-
-    for (int A = 0; A < bs1_->molecule()->natom(); A++) {
-        Cp[A][0] = (double)bs1_->molecule()->Z(A);
-        Cp[A][1] = bs1_->molecule()->x(A);
-        Cp[A][2] = bs1_->molecule()->y(A);
-        Cp[A][3] = bs1_->molecule()->z(A);
-    }
+//    C = std::make_shared<Matrix>("Partial Charge Field (Z,x,y,z)", bs1_->molecule()->natom(), 4);
+//    double **Cp = C->pointer();
+//
+//    for (int A = 0; A < bs1_->molecule()->natom(); A++) {
+//        Cp[A][0] = (double)bs1_->molecule()->Z(A);
+//        Cp[A][1] = bs1_->molecule()->x(A);
+//        Cp[A][2] = bs1_->molecule()->y(A);
+//        Cp[A][3] = bs1_->molecule()->z(A);
+//    }
 
 }
 
 MultipolePotentialInt_erf::~MultipolePotentialInt_erf() { delete[] buffer_; }
+
+void MultipolePotentialInt_erf::set_charge_field(std::vector<std::pair<double, std::array<double, 3>>>& Zxyz) {
+//  engine0_->set_params(Zxyz);
+    Zxyz_ = Zxyz;
+}
 
 void MultipolePotentialInt_erf::compute_pair_erf(double omega, const libint2::Shell& s1, const libint2::Shell& s2) {
 
@@ -474,8 +491,10 @@ void MultipolePotentialInt_erf::compute_pair_erf(double omega, const libint2::Sh
 
     int ao12 = 0;
 
-    double **Cp = C->pointer();
-    int ncharge = C->rowspi()[0];
+//    double **Cp = C->pointer();
+//    int ncharge = C->rowspi()[0];
+
+    int ncharge = Zxyz_.size();
 
     for (int p1 = 0; p1 < nprim1; ++p1) {
         double a = s1.alpha[p1];
@@ -495,11 +514,11 @@ void MultipolePotentialInt_erf::compute_pair_erf(double omega, const libint2::Sh
             for (int atom = 0; atom < ncharge; ++atom) {
                 double P_C[3];
 
-                double Z = Cp[atom][0];
+                double Z = Zxyz_[atom].first;
 
-                P_C[0] = P[0] - Cp[atom][1];
-                P_C[1] = P[1] - Cp[atom][2];
-                P_C[2] = P[2] - Cp[atom][3];
+                P_C[0] = P[0] - Zxyz_[atom].second[0];
+                P_C[1] = P[1] - Zxyz_[atom].second[1];
+                P_C[2] = P[2] - Zxyz_[atom].second[2];
 
                 Point PC{P_C[0],P_C[1],P_C[2]};
 

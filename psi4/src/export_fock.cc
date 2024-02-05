@@ -49,10 +49,13 @@ void export_fock(py::module &m) {
 
     typedef void (JK::*initialize_no_args)();
     typedef void (JK::*initialize_one_arg)(double);
+    typedef void (JK::*initialize_two_arg)(double, double);
     typedef void (JK::*compute_no_args)();
     typedef void (JK::*compute_one_arg)(double);
+    typedef void (JK::*compute_two_arg)(double, double);
     typedef void (JK::*finalize_no_args)();
     typedef void (JK::*finalize_one_arg)(double);
+    typedef void (JK::*finalize_two_arg)(double, double);
 
     py::class_<JK, std::shared_ptr<JK>>(m, "JK", "docstring")
         .def_static("build_JK",
@@ -67,7 +70,7 @@ void export_fock(py::module &m) {
         .def("memory_estimate", &JK::memory_estimate)
         .def("initialize", initialize_no_args(&JK::initialize))
         .def("initialize", initialize_one_arg(&JK::initialize),"eta"_a)
-
+        .def("initialize", initialize_two_arg(&JK::initialize),"omega"_a, "eta"_a)
         .def("basisset", &JK::basisset)
         .def("set_print", &JK::set_print)
         .def("set_cutoff", &JK::set_cutoff)
@@ -91,9 +94,10 @@ void export_fock(py::module &m) {
         .def("get_early_screening", &JK::get_early_screening, "Use severe screening techniques? Useful in early SCF iterations.")
         .def("compute", compute_no_args(&JK::compute))
         .def("compute", compute_one_arg(&JK::compute),"eta"_a)
-
+        .def("compute", compute_two_arg(&JK::compute),"omega"_a, "eta"_a)
         .def("finalize", finalize_no_args(&JK::finalize))
         .def("finalize", finalize_one_arg(&JK::finalize),"eta"_a)
+        .def("finalize", finalize_two_arg(&JK::finalize),"omega"_a, "eta"_a)
         .def("C_clear",
              [](JK &jk) {
                  jk.C_left().clear();
@@ -196,8 +200,10 @@ void export_fock(py::module &m) {
 
     typedef void (DFHelper::*transform_no_args)();
     typedef void (DFHelper::*transform_one_arg)(double);
+    typedef void (DFHelper::*transform_two_arg)(double, double);
     typedef void (DFHelper::*initialize_zero_arg)();
     typedef void (DFHelper::*initialize_with_arg)(double);
+    typedef void (DFHelper::*initialize_with_two_arg)(double, double);
 
     py::class_<DFHelper, std::shared_ptr<DFHelper>>(m, "DFHelper", "docstring")
         .def(py::init<std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet> >())
@@ -220,10 +226,12 @@ void export_fock(py::module &m) {
         .def("add_space", &DFHelper::add_space)
         .def("initialize", initialize_zero_arg(&DFHelper::initialize))
         .def("initialize", initialize_with_arg(&DFHelper::initialize), "eta"_a)
+        .def("initialize", initialize_with_two_arg(&DFHelper::initialize), "omega"_a, "eta"_a)
         .def("print_header", &DFHelper::print_header)
         .def("add_transformation", &DFHelper::add_transformation, "name"_a, "key1"_a, "key2"_a, "order"_a = "Qpq")
         .def("transform", transform_no_args(&DFHelper::transform))
         .def("transform", transform_one_arg(&DFHelper::transform), "eta"_a)
+        .def("transform", transform_two_arg(&DFHelper::transform), "omega"_a, "eta"_a)
         .def("clear_spaces", &DFHelper::clear_spaces)
         .def("clear_all", &DFHelper::clear_all)
         .def("transpose", &DFHelper::transpose)

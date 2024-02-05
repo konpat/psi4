@@ -129,8 +129,9 @@ class MultipolePotentialInt_erf : public OneBodyAOInt, public mdintegrals::MDHel
 
    protected:
     /// Matrix of coordinates/charges of partial charges
-    SharedMatrix C;
- 
+//    SharedMatrix C;
+    std::vector<std::pair<double, std::array<double, 3>>> Zxyz_;
+
    public:
     //! Constructor. Do not call directly use an IntegralFactory.
     MultipolePotentialInt_erf(double omega, std::vector<SphericalTransform>&, std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet>,
@@ -141,10 +142,11 @@ class MultipolePotentialInt_erf : public OneBodyAOInt, public mdintegrals::MDHel
     void setOmega(double omega);
 
    // Set the field of charges
-    void set_charge_field(SharedMatrix C_) { C = C_; }
-  
+//    void set_charge_field(SharedMatrix C_) { C = C_; }
+    void set_charge_field(std::vector<std::pair<double, std::array<double, 3>>>& Zxyz);
+
    // Get the field of charges
-    SharedMatrix charge_field() const { return C; }
+//    SharedMatrix charge_field() const { return C; }
    //
 };
 
