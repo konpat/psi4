@@ -601,7 +601,7 @@ void FISAPT::nuclear() {
 
     std::vector<std::pair<double, std::array<double, 3>>> Zxyz;
 
-    if (int_type == "gau") {
+    if (int_type == "GAU") {
         outfile->Printf("  nuclear integral test1 \n\n");
         std::shared_ptr<MultipolePotentialInt_reg> Vint_lr;
         Vint_lr = std::shared_ptr<MultipolePotentialInt_reg>(static_cast<MultipolePotentialInt_reg*>(Vfact->ao_multipole_potential_reg(options_.get_double("ETA"),0.0).release()));
@@ -889,11 +889,11 @@ void FISAPT::nuclear() {
     }
 
 
-    if (int_type == "erf") {
+    if (int_type == "ERF") {
         outfile->Printf("  nuclear integral test1 \n\n");
         std::shared_ptr<MultipolePotentialInt_erf> Vint_lr;
-        Vint_lr = std::shared_ptr<MultipolePotentialInt_erf>(static_cast<MultipolePotentialInt_erf*>(Vfact->ao_multipole_potential_erf(options_.get_double("OMEGA"),0.0).release()));
-
+        Vint_lr = std::shared_ptr<MultipolePotentialInt_erf>(static_cast<MultipolePotentialInt_erf*>(Vfact->ao_multipole_potential_erf(options_.get_double("RSEP_OMEGA"),0.0).release()));
+        outfile->Printf("  nuclear integral test 2 \n\n");
         // > A < //
         double* ZAp = vectors_["ZA"]->pointer();
         for (int A = 0; A < nA; A++) {
@@ -903,11 +903,13 @@ void FISAPT::nuclear() {
     
         matrices_["VA"] = std::make_shared<Matrix>("VA", nm, nm);
         Vint->compute(matrices_["VA"]);
-
+        outfile->Printf("  nuclear integral test 3 \n\n");
         Vint_lr->set_charge_field(Zxyz);
-
+        outfile->Printf("  nuclear integral test 4 \n\n");
         matrices_["VA_lr"] = std::make_shared<Matrix>("VA_lr", nm, nm);
-        Vint_lr->compute_erf(options_.get_double("OMEGA"), matrices_["VA_lr"]);
+        Vint_lr->compute_erf(options_.get_double("RSEP_OMEGA"), matrices_["VA_lr"]);
+        outfile->Printf("  nuclear integral test 4.5  \n\n");
+        matrices_["VA_lr"]->print();
 
         outfile->Printf("  nuclear integral test5 \n\n");
 
@@ -925,8 +927,9 @@ void FISAPT::nuclear() {
         Vint_lr->set_charge_field(Zxyz);
 
         matrices_["VB_lr"] = std::make_shared<Matrix>("VB_lr", nm, nm);
-        Vint_lr->compute_erf(options_.get_double("OMEGA"), matrices_["VB_lr"]);
+        Vint_lr->compute_erf(options_.get_double("RSEP_OMEGA"), matrices_["VB_lr"]);
 
+        
         outfile->Printf("  nuclear integral test5 \n\n");
 
         // > C < //
@@ -943,7 +946,7 @@ void FISAPT::nuclear() {
         Vint_lr->set_charge_field(Zxyz);
     
         matrices_["VC_lr"] = std::make_shared<Matrix>("VC_lr", nm, nm);
-        Vint_lr->compute_erf(options_.get_double("OMEGA"), matrices_["VC_lr"]);
+        Vint_lr->compute_erf(options_.get_double("RSEP_OMEGA"), matrices_["VC_lr"]);
     
         outfile->Printf("  nuclear integral test5 \n\n");
 
@@ -977,7 +980,7 @@ void FISAPT::nuclear() {
         vectors_["DIP NUCB"] = dip_nucb;
         vectors_["DIP NUCC"] = dip_nucc;
 
-        double omega = options_.get_double("OMEGA");
+        double omega = options_.get_double("RSEP_OMEGA");
         outfile->Printf("omega here is %10.3f\n",omega);
         for (int A = 0; A < nA; A++) {
             for (int B = 0; B < nA; B++) {
@@ -1207,6 +1210,7 @@ void FISAPT::coulomb() {
         matrices_["JC"]->copy(J[0]);
         matrices_["KC"]->copy(K[0]);
     }
+    outfile->Printf(" test out  Coulomb Integrals \n\n");
 }
 
 void FISAPT::scf() {
@@ -1221,57 +1225,60 @@ void FISAPT::scf() {
     matrices_["XC"] = linalg::horzcat(Xs);
     matrices_["XC"]->set_name("XC");
 
+    outfile->Printf("  ==> test   Relaxed SCF Equations 1 <==\n\n");
     // => Embedding Potential for C <= //
 
-    std::shared_ptr<Matrix> WC(matrices_["VC"]->clone());
-    WC->copy(matrices_["VC"]);
-    WC->add(matrices_["JC"]);
-    WC->add(matrices_["JC"]);
-    WC->subtract(matrices_["KC"]);
-    matrices_["WC"] = WC;
-
+    std::string int_type = options_.get_str("RSEP_INT");
+    if (int_type == "GAU" || int_type == "ERF") {
+    	std::shared_ptr<Matrix> WC(matrices_["VC"]->clone());
+    	WC->copy(matrices_["VC"]);
+    	WC->add(matrices_["JC"]);
+    	WC->add(matrices_["JC"]);
+    	WC->subtract(matrices_["KC"]);
+    	matrices_["WC"] = WC;
+    
+    	outfile->Printf("  ==> test   Relaxed SCF Equations 2 <==\n\n");
     // => A <= //
 
-    outfile->Printf("  ==> SCF A: <==\n\n");
-    std::shared_ptr<Matrix> VA_SCF(matrices_["VA"]->clone());
-    VA_SCF->copy(matrices_["VA"]);
-    if (reference_->has_potential_variable("C")) VA_SCF->add(matrices_["VE"]);
-    std::shared_ptr<FISAPTSCF> scfA =
-        std::make_shared<FISAPTSCF>(jk_, matrices_["E NUC"]->get(0, 0), matrices_["S"], matrices_["XC"], matrices_["T"],
+    	outfile->Printf("  ==> SCF A: <==\n\n");
+    	std::shared_ptr<Matrix> VA_SCF(matrices_["VA"]->clone());
+    	VA_SCF->copy(matrices_["VA"]);
+    	if (reference_->has_potential_variable("C")) VA_SCF->add(matrices_["VE"]);
+    	std::shared_ptr<FISAPTSCF> scfA = std::make_shared<FISAPTSCF>(jk_, matrices_["E NUC"]->get(0, 0), matrices_["S"], matrices_["XC"], matrices_["T"],
                                     VA_SCF, matrices_["WC"], matrices_["LoccA"], options_);
-    scfA->compute_energy();
+    	scfA->compute_energy();
 
-    scalars_["E0 A"] = scfA->scalars()["E SCF"];
-    matrices_["Cocc0A"] = scfA->matrices()["Cocc"];
-    matrices_["Cvir0A"] = scfA->matrices()["Cvir"];
-    matrices_["J0A"] = scfA->matrices()["J"];
-    matrices_["K0A"] = scfA->matrices()["K"];
-    vectors_["eps_occ0A"] = scfA->vectors()["eps_occ"];
-    vectors_["eps_vir0A"] = scfA->vectors()["eps_vir"];
+    	scalars_["E0 A"] = scfA->scalars()["E SCF"];
+    	matrices_["Cocc0A"] = scfA->matrices()["Cocc"];
+    	matrices_["Cvir0A"] = scfA->matrices()["Cvir"];
+    	matrices_["J0A"] = scfA->matrices()["J"];
+    	matrices_["K0A"] = scfA->matrices()["K"];
+    	vectors_["eps_occ0A"] = scfA->vectors()["eps_occ"];
+    	vectors_["eps_vir0A"] = scfA->vectors()["eps_vir"];
 
     // => B <= //
 
-    outfile->Printf("  ==> SCF B: <==\n\n");
-    std::shared_ptr<Matrix> VB_SCF(matrices_["VB"]->clone());
-    VB_SCF->copy(matrices_["VB"]);
-    if (reference_->has_potential_variable("C")) VB_SCF->add(matrices_["VE"]);
-    std::shared_ptr<FISAPTSCF> scfB =
-        std::make_shared<FISAPTSCF>(jk_, matrices_["E NUC"]->get(1, 1), matrices_["S"], matrices_["XC"], matrices_["T"],
+    	outfile->Printf("  ==> SCF B: <==\n\n");
+    	std::shared_ptr<Matrix> VB_SCF(matrices_["VB"]->clone());
+    	VB_SCF->copy(matrices_["VB"]);
+    	if (reference_->has_potential_variable("C")) VB_SCF->add(matrices_["VE"]);
+    	std::shared_ptr<FISAPTSCF> scfB = std::make_shared<FISAPTSCF>(jk_, matrices_["E NUC"]->get(1, 1), matrices_["S"], matrices_["XC"], matrices_["T"],
                                     VB_SCF, matrices_["WC"], matrices_["LoccB"], options_);
-    outfile->Printf("  ==> SCF B test 1 <==\n\n");
-    scfB->compute_energy();
+    	outfile->Printf("  ==> SCF B test 1 <==\n\n");
+    	scfB->compute_energy();
 
-    outfile->Printf("  ==> SCF B test 2 <==\n\n");
+    	outfile->Printf("  ==> SCF B test 2 <==\n\n");
 
-    scalars_["E0 B"] = scfB->scalars()["E SCF"];
-    matrices_["Cocc0B"] = scfB->matrices()["Cocc"];
-    matrices_["Cvir0B"] = scfB->matrices()["Cvir"];
-    matrices_["J0B"] = scfB->matrices()["J"];
-    matrices_["K0B"] = scfB->matrices()["K"];
-    vectors_["eps_occ0B"] = scfB->vectors()["eps_occ"];
-    vectors_["eps_vir0B"] = scfB->vectors()["eps_vir"];
+    	scalars_["E0 B"] = scfB->scalars()["E SCF"];
+    	matrices_["Cocc0B"] = scfB->matrices()["Cocc"];
+    	matrices_["Cvir0B"] = scfB->matrices()["Cvir"];
+    	matrices_["J0B"] = scfB->matrices()["J"];
+    	matrices_["K0B"] = scfB->matrices()["K"];
+    	vectors_["eps_occ0B"] = scfB->vectors()["eps_occ"];
+    	vectors_["eps_vir0B"] = scfB->vectors()["eps_vir"];
 
-    outfile->Printf("  ==> SCF done test  <==\n\n");
+    	outfile->Printf("  ==> SCF done test  <==\n\n");
+    }
 }
 
 // Prep the computation to handle frozen core orbitals
@@ -2079,13 +2086,13 @@ void FISAPT::unify_part2() {
 
         outfile->Printf("  before jklr test \n\n");
 
-        if (int_type == "gau") {
+        if (int_type == "GAU") {
             jklr_ = JK::build_JK(options_.get_double("ETA"), primary_, reference_->get_basisset("DF_BASIS_SCF"), options_, false, doubles_);
             jklr_->set_memory(doubles_);
         } 
 
-        if (int_type == "erf") {
-            jklr_ = JK::build_JK(options_.get_double("OMEGA"), options_.get_double("ETA"), primary_, reference_->get_basisset("DF_BASIS_SCF"), options_, false, doubles_);
+        if (int_type == "ERF") {
+            jklr_ = JK::build_JK(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"), primary_, reference_->get_basisset("DF_BASIS_SCF"), options_, false, doubles_);
             jklr_->set_memory(doubles_);
         } 
 
@@ -2115,7 +2122,7 @@ void FISAPT::unify_part2() {
         Cllr.push_back(Cocc_B);
         Crlr.push_back(Cocc_B);
 
-        if (int_type == "gau") {
+        if (int_type == "GAU") {
             outfile->Printf(" jklr test 5  \n\n");
             jklr_->set_do_J(true);
             jklr_->set_do_K(true);
@@ -2128,16 +2135,16 @@ void FISAPT::unify_part2() {
             outfile->Printf(" jklr test 7  \n\n");
         } 
 
-        if (int_type == "erf") {
+        if (int_type == "ERF") {
 
             outfile->Printf(" jklr test 5  \n\n");
             jklr_->set_do_J(true);
             jklr_->set_do_K(true);
-            jklr_->initialize(options_.get_double("OMEGA"), options_.get_double("ETA"));
+            jklr_->initialize(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
             outfile->Printf(" jklr test 6  \n\n");
             jklr_->print_header();
     
-            jklr_->compute(options_.get_double("OMEGA"), options_.get_double("ETA"));
+            jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
     
             outfile->Printf(" jklr test 7  \n\n");
         } 
@@ -3138,12 +3145,12 @@ void FISAPT::exch() {
     Crlr.push_back(C_AOY);
     Crlr.push_back(C_XOY);
 
-    if (int_type == "gau") {
+    if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
     }
 
-    if (int_type == "erf") {
-        jklr_->compute(options_.get_double("OMEGA"), options_.get_double("ETA"));
+    if (int_type == "ERF") {
+        jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
     }
 
     std::shared_ptr<Matrix> K_AOB_lr = K_lr[0];
@@ -3585,12 +3592,12 @@ void FISAPT::exch() {
     Cllr.push_back(Dsj_osh);
     Crlr.push_back(matrices_["AlloccB"]);
 
-    if (int_type == "gau") {
+    if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
     }
 
-    if (int_type == "erf") {
-        jklr_->compute(options_.get_double("OMEGA"), options_.get_double("ETA"));
+    if (int_type == "ERF") {
+        jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
     }
 
     std::shared_ptr<Matrix> J_ss_lr = J_lr[0];
@@ -3743,12 +3750,12 @@ void FISAPT::exch() {
     Cllr.push_back(Dsj_osh);
     Crlr.push_back(matrices_["AlloccB"]);
 
-    if (int_type == "gau") {
+    if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
     }
 
-    if (int_type == "erf") {
-        jklr_->compute(options_.get_double("OMEGA"), options_.get_double("ETA"));
+    if (int_type == "ERF") {
+        jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
     }
 
     std::shared_ptr<Matrix> J2_ss_lr = J_lr[0];
@@ -3936,12 +3943,12 @@ void FISAPT::ind() {
         Crlr.push_back(C_AOY);
         Crlr.push_back(C_XOY);
         
-        if (int_type == "gau") {
+        if (int_type == "GAU") {
             jklr_->compute(options_.get_double("ETA"));
         }
     
-        if (int_type == "erf") {
-            jklr_->compute(options_.get_double("OMEGA"), options_.get_double("ETA"));
+        if (int_type == "ERF") {
+            jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
         }
 
         std::shared_ptr<Matrix> K_AOB_lr = K_lr[0];
@@ -4035,12 +4042,12 @@ void FISAPT::ind() {
         Crlr.push_back(C_P_XBX);
       
         // => Compute the JK matrices <= //
-        if (int_type == "gau") {
+        if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
         }
     
-        if (int_type == "erf") {
-            jklr_->compute(options_.get_double("OMEGA"), options_.get_double("ETA"));
+        if (int_type == "ERF") {
+            jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
         }
 
       
@@ -8355,9 +8362,9 @@ void FISAPT::fdisp() {
     }
 
     double eta = options_.get_double("ETA");
-    double omega = options_.get_double("OMEGA");
+    double omega = options_.get_double("RSEP_OMEGA");
 
-    if (int_type == "gau") {
+    if (int_type == "GAU") {
 
         auto dfh_lr(std::make_shared<DFHelper>(eta, primary_, auxiliary));
 
@@ -9062,7 +9069,7 @@ void FISAPT::fdisp() {
     }
 
 
-    if (int_type == "erf") {
+    if (int_type == "ERF") {
 
         auto dfh_lr(std::make_shared<DFHelper>(omega, eta, primary_, auxiliary));
 

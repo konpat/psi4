@@ -1195,7 +1195,7 @@ int read_options(const std::string &name, Options &options, bool suppress_printi
         options.add_bool("FISAPT_CUBE_LINKIHOS", false);
         /*- Generate cube files for fragment density matrices? -*/
         options.add_bool("FISAPT_CUBE_DENSMAT", false);
-        options.add_str("RSEP_INT", "", "gau erf");
+        options.add_str("RSEP_INT", "gau", "gau erf");
         // => F-SAPT Options <= //
 
         /*- Do an F-SAPT analysis? -*/
@@ -1394,7 +1394,7 @@ int read_options(const std::string &name, Options &options, bool suppress_printi
         /*- Omega scaling for Erf and Erfc.-*/
         options.add_double("OMEGA_ERF", 0.20);
         options.add_double("ETA", 0.0);
-        options.add_double("OMEGA", 0.0);
+        options.add_double("RSEP_OMEGA", 0.0);
         options.add_str("RSEP_INT", "", "gau erf");
     }
     if (name == "SCF" || options.read_globals()) {

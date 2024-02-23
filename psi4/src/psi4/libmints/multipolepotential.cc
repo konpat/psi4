@@ -406,7 +406,6 @@ MultipolePotentialInt_erf::MultipolePotentialInt_erf(double omega, std::vector<S
     int am = maxam1_ + maxam2_;
     int rdim1 = am + order_ + 1;
     int rdim2 = rdim1 * rdim1 * rdim1;
-    R = std::vector<double>(rdim1 * rdim2);
 
 
     // set up Boys function evaluator
@@ -431,8 +430,8 @@ MultipolePotentialInt_erf::MultipolePotentialInt_erf(double omega, std::vector<S
             {bs1_->molecule()->x(A), bs1_->molecule()->y(A), bs1_->molecule()->z(A)}});
     }
 
-    engine0_ = std::make_unique<libint2::Engine>(libint2::Operator::nuclear, max_nprim, max_am, 0);
-    engine0_->set_params(Zxyz);
+//    engine0_ = std::make_unique<libint2::Engine>(libint2::Operator::nuclear, max_nprim, max_am, 0);
+//    engine0_->set_params(Zxyz);
 
     // Setup the initial field of partial charges
 //    C = std::make_shared<Matrix>("Partial Charge Field (Z,x,y,z)", bs1_->molecule()->natom(), 4);
@@ -520,6 +519,7 @@ void MultipolePotentialInt_erf::compute_pair_erf(double omega, const libint2::Sh
                 P_C[1] = P[1] - Zxyz_[atom].second[1];
                 P_C[2] = P[2] - Zxyz_[atom].second[2];
 
+       //         outfile->Printf("Z, P_C[0], P_C[1], P_C[2] = %12.6f %12.6f %12.6f %12.6f \n",Z,P_C[0], P_C[1], P_C[2]);
                 Point PC{P_C[0],P_C[1],P_C[2]};
 
                 fill_R_matrix_erf(r_am, p, omega, PC, R, fm_eval_);
@@ -566,6 +566,9 @@ void MultipolePotentialInt_erf::compute_pair_erf(double omega, const libint2::Sh
                                 }
                                 buffer_[ao12 + size * der_count] += sign_prefac * val * -Z;
                                 ++ao12;
+                             //   if (!(Z == 0)) {
+                             //       outfile->Printf("buffer_[ao12 + size * der_count]   %12.6f\n", buffer_[ao12 + size * der_count]);
+                             //   }
                             }
                         }
                         der_count++;

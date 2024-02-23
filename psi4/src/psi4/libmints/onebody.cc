@@ -456,7 +456,7 @@ void OneBodyAOInt::compute_erf(double omega, SharedMatrix &result) {
     const auto bs1_equiv_bs2 = (bs1_ == bs2_);
 
     double sign = is_antisymmetric() ? -1 : 1;
- //   outfile->Printf("In special OneBodyAOInt->compute 1\n");
+    outfile->Printf("In special OneBodyAOInt->compute 1\n");
     for (auto pair : shellpairs_) {
         int p1 = pair.first;
         int p2 = pair.second;
@@ -467,7 +467,7 @@ void OneBodyAOInt::compute_erf(double omega, SharedMatrix &result) {
         int j_offset = bs2_->shell_to_basis_function(p2);
 
         compute_shell_erf(omega, p1, p2);
-
+        outfile->Printf("compute_pair_erf p1, p2 = %d %d\n", p1, p2);
         const double *location = buffers_[0];
         for (int p = 0; p < ni; ++p) {
             for (int q = 0; q < nj; ++q) {
@@ -487,7 +487,7 @@ void OneBodyAOInt::compute_erf(double omega, std::vector<SharedMatrix> &result) 
     int ns1 = bs1_->nshell();
     int ns2 = bs2_->nshell();
     const auto bs1_equiv_bs2 = (bs1_ == bs2_);
- //   outfile->Printf("In special OneBodyAOInt->compute 2\n");
+    outfile->Printf("In special OneBodyAOInt->compute 2\n");
 
     // Check the length of result, must be chunk
     // There not an easy way of checking the size now.
@@ -516,10 +516,10 @@ void OneBodyAOInt::compute_erf(double omega, std::vector<SharedMatrix> &result) 
         int nj = bs2_->shell(p2).nfunction();
         int i_offset = bs1_->shell_to_basis_function(p1);
         int j_offset = bs2_->shell_to_basis_function(p2);
-
+        outfile->Printf("compute_pair_erf 1\n");
         // Compute the shell
         compute_pair_erf(omega, s1, s2);
-
+        outfile->Printf("compute_pair_erf s1, s2 = %d %d\n", s1, s2);
         // For each integral that we got put in its contribution
         for (int r = 0; r < nchunk_; ++r) {
             const double *location = buffers_[r];
@@ -550,10 +550,10 @@ void OneBodyAOInt::compute_shell_reg(double eta, int sh1, int sh2) {
 }
 
 void OneBodyAOInt::compute_shell_erf(double omega, int sh1, int sh2) {
-  //  outfile->Printf("test compute shell reg \n");
+    outfile->Printf("test compute shell reg \n");
     const auto &s1 = bs1_->l2_shell(sh1);
     const auto &s2 = bs2_->l2_shell(sh2);
-    compute_pair_erf(omega_, s1, s2);
+    compute_pair_erf(omega, s1, s2);
 }
 
 void OneBodyAOInt::compute_shell_deriv1(int sh1, int sh2) {

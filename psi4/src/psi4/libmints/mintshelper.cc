@@ -1709,6 +1709,8 @@ std::vector<SharedMatrix> MintsHelper::ao_multipole_potential_reg(double eta, in
 
     std::shared_ptr<OneBodyAOInt> ints(integral_->ao_multipole_potential_reg(eta, order, deriv));
     ints->compute(eta, ret);
+    outfile->Printf("ret matrix \n");
+    ret[0]->print();
     return ret;
 }
 
@@ -1720,6 +1722,8 @@ std::vector<SharedMatrix> MintsHelper::ao_multipole_potential_erf(double omega, 
 
     std::shared_ptr<OneBodyAOInt> ints(integral_->ao_multipole_potential_erf(omega, order, deriv));
     ints->compute_erf(omega, ret);
+    std::shared_ptr<Matrix> computed_ret(ret[0]->clone());
+    computed_ret->print();
     return ret;
 }
 
