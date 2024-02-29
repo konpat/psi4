@@ -396,7 +396,7 @@ MultipolePotentialInt_erf::MultipolePotentialInt_erf(double omega, std::vector<S
     int maxnao1 = INT_NCART(maxam1_);
     int maxnao2 = INT_NCART(maxam2_);
     
-//    outfile->Printf(" test0 initialized reg \n");
+    //outfile->Printf(" test0 initialized erf \n");
 
     if (deriv > 0) {
         throw FeatureNotImplemented("LibMints", "MultipolePotentialInts called with deriv > 0", __FILE__, __LINE__);
@@ -406,6 +406,7 @@ MultipolePotentialInt_erf::MultipolePotentialInt_erf(double omega, std::vector<S
     int am = maxam1_ + maxam2_;
     int rdim1 = am + order_ + 1;
     int rdim2 = rdim1 * rdim1 * rdim1;
+    R = std::vector<double>(rdim1 * rdim2);
 
 
     // set up Boys function evaluator
@@ -430,8 +431,8 @@ MultipolePotentialInt_erf::MultipolePotentialInt_erf(double omega, std::vector<S
             {bs1_->molecule()->x(A), bs1_->molecule()->y(A), bs1_->molecule()->z(A)}});
     }
 
-//    engine0_ = std::make_unique<libint2::Engine>(libint2::Operator::nuclear, max_nprim, max_am, 0);
-//    engine0_->set_params(Zxyz);
+    engine0_ = std::make_unique<libint2::Engine>(libint2::Operator::nuclear, max_nprim, max_am, 0);
+    engine0_->set_params(Zxyz);
 
     // Setup the initial field of partial charges
 //    C = std::make_shared<Matrix>("Partial Charge Field (Z,x,y,z)", bs1_->molecule()->natom(), 4);
@@ -455,7 +456,7 @@ void MultipolePotentialInt_erf::set_charge_field(std::vector<std::pair<double, s
 
 void MultipolePotentialInt_erf::compute_pair_erf(double omega, const libint2::Shell& s1, const libint2::Shell& s2) {
 
-//    outfile->Printf(" test3 compute pair reg \n");
+    //outfile->Printf(" In specific MultipolePotentialInt_erf::compute_pair_erf %d %d \n",s1,s2);
  
   //   double Cx = origin_[0];
  //   double Cy = origin_[1];
@@ -507,7 +508,6 @@ void MultipolePotentialInt_erf::compute_pair_erf(double omega, const libint2::Sh
             double prefac = 2.0 * M_PI * ca * cb / p;
 
             fill_E_matrix(am1, am2, P, A, B, a, b, Ex, Ey, Ez);
- //            fill_R_matrix(r_am, p, P, C, R, fm_eval_);
 
 
             for (int atom = 0; atom < ncharge; ++atom) {

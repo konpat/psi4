@@ -622,8 +622,8 @@ void FISAPT::nuclear() {
         matrices_["VA_sr"] = std::make_shared<Matrix>("VA_sr", nm, nm);
         Vint_lr->compute(options_.get_double("ETA"), matrices_["VA_sr"]);
         
-        outfile->Printf("  1e A matrix : \n\n");
-        matrices_["VA_sr"]->print();
+        //outfile->Printf("  1e A matrix : \n\n");
+        //matrices_["VA_sr"]->print();
     
         matrices_["VA_lr"] = matrices_["VA"]->clone();
         matrices_["VA_lr"]->subtract(matrices_["VA_sr"]);
@@ -646,8 +646,8 @@ void FISAPT::nuclear() {
         matrices_["VB_sr"] = std::make_shared<Matrix>("VB_sr", nm, nm);
         Vint_lr->compute(options_.get_double("ETA"), matrices_["VB_sr"]);
     
-        outfile->Printf("  1e B matrix : \n\n");
-        matrices_["VB_sr"]->print();
+        //outfile->Printf("  1e B matrix : \n\n");
+        //matrices_["VB_sr"]->print();
     
         matrices_["VB_lr"] = matrices_["VB"]->clone();
         matrices_["VB_lr"]->subtract(matrices_["VB_sr"]);
