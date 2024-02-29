@@ -259,7 +259,7 @@ void OneBodyAOInt::compute_pair_reg(double eta, const libint2::Shell &s1, const 
 }
 
 void OneBodyAOInt::compute_pair_erf(double omega, const libint2::Shell &s1, const libint2::Shell &s2) {
-  //  outfile->Printf(" test onebody reg \n");
+    outfile->Printf(" test compute_pair_erf %6.2f \n",omega);
     engine0_->compute(s1, s2);
     //engine0_->compute(omega, s1, s2);
     for (int chunk = 0; chunk < nchunk(); chunk++) {
@@ -466,8 +466,9 @@ void OneBodyAOInt::compute_erf(double omega, SharedMatrix &result) {
         int i_offset = bs1_->shell_to_basis_function(p1);
         int j_offset = bs2_->shell_to_basis_function(p2);
 
+        outfile->Printf("Before compute_shell_erf p1, p2 = %d %d\n", p1, p2);
         compute_shell_erf(omega, p1, p2);
-        outfile->Printf("compute_pair_erf p1, p2 = %d %d\n", p1, p2);
+        outfile->Printf("After  compute_shell_erf p1, p2 = %d %d\n", p1, p2);
         const double *location = buffers_[0];
         for (int p = 0; p < ni; ++p) {
             for (int q = 0; q < nj; ++q) {
@@ -479,7 +480,7 @@ void OneBodyAOInt::compute_erf(double omega, SharedMatrix &result) {
             }
         }
     }
- //   outfile->Printf("Out of special OneBodyAOInt->compute 1\n");
+    outfile->Printf("Out of special OneBodyAOInt->compute 1\n");
 }
 
 void OneBodyAOInt::compute_erf(double omega, std::vector<SharedMatrix> &result) {
@@ -546,13 +547,14 @@ void OneBodyAOInt::compute_shell_reg(double eta, int sh1, int sh2) {
    // outfile->Printf("test compute shell reg \n");
     const auto &s1 = bs1_->l2_shell(sh1);
     const auto &s2 = bs2_->l2_shell(sh2);
+    outfile->Printf("test compute shell gau %6.2f %d %d\n",eta,s1,s2);
     compute_pair_reg(eta, s1, s2);
 }
 
 void OneBodyAOInt::compute_shell_erf(double omega, int sh1, int sh2) {
-    outfile->Printf("test compute shell reg \n");
     const auto &s1 = bs1_->l2_shell(sh1);
     const auto &s2 = bs2_->l2_shell(sh2);
+    outfile->Printf("test compute shell erf %6.2f %d %d\n",omega,s1,s2);
     compute_pair_erf(omega, s1, s2);
 }
 
