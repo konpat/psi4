@@ -2140,11 +2140,11 @@ void FISAPT::unify_part2() {
             outfile->Printf(" jklr test 5  \n\n");
             jklr_->set_do_J(true);
             jklr_->set_do_K(true);
-            jklr_->initialize(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
+            jklr_->initialize(options_.get_double("RSEP_OMEGA"), 0.0);
             outfile->Printf(" jklr test 6  \n\n");
             jklr_->print_header();
     
-            jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
+            jklr_->compute(options_.get_double("RSEP_OMEGA"), 0.0);
     
             outfile->Printf(" jklr test 7  \n\n");
         } 
@@ -4722,6 +4722,8 @@ void FISAPT::ind() {
     
     std::shared_ptr<Matrix> xA_lr = cphflr->x_A_;
     std::shared_ptr<Matrix> xB_lr = cphflr->x_B_;
+
+    xA_lr->print();
 
   // Backward in Ed's convention
     xA_lr->scale(-1.0);
@@ -10059,7 +10061,11 @@ void CPHF_FISAPT::compute_cphf() {
 
         if (r2A > delta_) {
             std::shared_ptr<Matrix> s_A = s["A"];
+            double s_A_norm = s_A->vector_dot(s_A);
+            if (s_A_norm != 0.0) {
             double alpha = r_A->vector_dot(z_A) / p_A->vector_dot(s_A);
+            outfile->Printf("   alpha = %12.8f %12.8f %12.8f \n", alpha, sqrt(r_A->vector_dot(r_A)), sqrt(z_A->vector_dot(z_A)));
+            outfile->Printf("   alpha = %12.8f %12.8f %12.8f \n", alpha, sqrt(p_A->vector_dot(p_A)), sqrt(s_A->vector_dot(s_A)));
             if (alpha < 0.0) {
                 throw PSIEXCEPTION("Monomer A: A Matrix is not SPD");
             }
@@ -10072,10 +10078,16 @@ void CPHF_FISAPT::compute_cphf() {
             C_DAXPY(no * nv, alpha, pp[0], 1, xp[0], 1);
             C_DAXPY(no * nv, -alpha, sp[0], 1, rp[0], 1);
             r2A = sqrt(C_DDOT(no * nv, rp[0], 1, rp[0], 1)) / b2A;
+            }
+        else {
+            r2A = 0.0;
+        }
         }
 
         if (r2B > delta_) {
             std::shared_ptr<Matrix> s_B = s["B"];
+            double s_B_norm = s_B->vector_dot(s_B);
+            if (s_B_norm != 0.0) {
             double alpha = r_B->vector_dot(z_B) / p_B->vector_dot(s_B);
             if (alpha < 0.0) {
                 throw PSIEXCEPTION("Monomer B: A Matrix is not SPD");
@@ -10089,7 +10101,11 @@ void CPHF_FISAPT::compute_cphf() {
             C_DAXPY(no * nv, alpha, pp[0], 1, xp[0], 1);
             C_DAXPY(no * nv, -alpha, sp[0], 1, rp[0], 1);
             r2B = sqrt(C_DDOT(no * nv, rp[0], 1, rp[0], 1)) / b2B;
+            }
+        else {
+            r2B = 0.0;
         }
+        }   
 
         stop = std::time(nullptr);
         outfile->Printf("    %-4d %11.3E%1s %11.3E%1s %10ld\n", iter + 1, r2A, (r2A < delta_ ? "*" : " "), r2B,

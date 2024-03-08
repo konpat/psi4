@@ -672,6 +672,7 @@ void DiskDFJK::preiterations(double eta) {
 
 void DiskDFJK::preiterations(double omega, double eta) {
     // Setup integral objects
+    
     eta_ = 0.0;
     omega_ = omega;
     eri_.clear();
@@ -1372,7 +1373,7 @@ void DiskDFJK::initialize_JK_core(double omega, double eta) {
 //                             whether or not functions have been screened.
 
 
-
+    if (mn_blocks.size() > 0 && p_blocks.size() > 0) {  
 #pragma omp parallel for schedule(dynamic) num_threads(nthread)
     for (size_t mn_block_idx = 0; mn_block_idx < mn_blocks.size(); mn_block_idx++) {
 #ifdef _OPENMP
@@ -1387,7 +1388,7 @@ void DiskDFJK::initialize_JK_core(double omega, double eta) {
         // loop over all the blocks of P
         for (int p_block_idx = 0; p_block_idx < p_blocks.size(); ++p_block_idx) {
             // compute the
-            //outfile->Printf(" jklr initialize_JK_core  compute_shell_blocks eri, %d %d \n\n", mn_block_idx, p_block_idx);
+            outfile->Printf(" jklr initialize_JK_core  compute_shell_blocks eri, %d %d \n\n", mn_block_idx, p_block_idx);
             eri_[rank]->compute_shell_blocks(p_block_idx, mn_block_idx);
    //         outfile->Printf(" jklr initialize_JK_core  test 2, %d %d \n\n", mn_block_idx, p_block_idx);
 
@@ -1573,6 +1574,8 @@ void DiskDFJK::initialize_JK_core(double omega, double eta) {
 //            }
         }
     }
+    }
+    outfile->Printf(" Integral mn_block test \n");
     timer_off("JK: (A|mn)");
 
     timer_on("JK: (A|Q)^-1/2");
