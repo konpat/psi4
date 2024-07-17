@@ -375,15 +375,12 @@ void FittingMetric::form_fitting_metric(double eta) {
 
     std::vector<const double*> Jbuffer(nthread);  
     std::vector<std::shared_ptr<TwoBodyAOInt>> Jint(nthread);
-    std::vector<const double*> Jbuffer2(nthread);  
-    std::vector<std::shared_ptr<TwoBodyAOInt>> Jint2(nthread);
     for (int Q = 0; Q < nthread; Q++) {
         if (omega_ > 0.0) {
             Jint[Q] = std::shared_ptr<TwoBodyAOInt>(rifactory_J.erf_eri(omega_));
         } else {
-            Jint[Q] = std::shared_ptr<TwoBodyAOInt>(rifactory_J.eri());
             bool switch_engine=true;
-            Jint2[Q] = std::shared_ptr<TwoBodyAOInt>(rifactory_J.f12g12(exp_coeff, 0, true, switch_engine));
+            Jint[Q] = std::shared_ptr<TwoBodyAOInt>(rifactory_J.f12g12(exp_coeff, 0, true, switch_engine));
         }
     }
 
@@ -400,9 +397,7 @@ void FittingMetric::form_fitting_metric(double eta) {
             int numnu = aux_->shell(NU).nfunction();
 
             Jint[thread]->compute_shell(MU, 0, NU, 0);
-            Jint2[thread]->compute_shell(MU, 0, NU, 0);
             Jbuffer[thread] = Jint[thread]->buffer();
-            Jbuffer2[thread] = Jint2[thread]->buffer();
 
             int index = 0;
             for (int mu = 0; mu < nummu; ++mu) {
@@ -411,8 +406,9 @@ void FittingMetric::form_fitting_metric(double eta) {
                 for (int nu = 0; nu < numnu; ++nu, ++index) {
                     int onu = aux_->shell(NU).function_index() + nu;
 
-                    W[omu][onu] = Jbuffer[thread][index] - Jbuffer2[thread][index];
-                    W[onu][omu] = Jbuffer[thread][index] - Jbuffer2[thread][index];
+                    W[omu][onu] = Jbuffer[thread][index];
+                    W[onu][omu] = Jbuffer[thread][index];
+//                  outfile->Printf("Metric omu onu %4d %4d %14.10f\n",omu,onu,W[omu][onu]);
                 }
             }
         }

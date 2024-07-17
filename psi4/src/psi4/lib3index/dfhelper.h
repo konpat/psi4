@@ -418,21 +418,16 @@ class PSI_API DFHelper {
     void prepare_AO(double eta);
     void prepare_AO_core(double eta);
     void compute_dense_Qpq_blocking_Q(double eta, const size_t start, const size_t stop, double* Mp,
-                                      std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
-                                      std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
+                                      std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
     void compute_sparse_pQq_blocking_Q(double eta, const size_t start, const size_t stop, double* Mp,
-                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
-                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
+                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
     void compute_sparse_pQq_blocking_p(double eta, const size_t start, const size_t stop, double* Mp,
-                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
-                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
+                                       std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
     void compute_sparse_pQq_blocking_p_symm(double eta, const size_t start, const size_t stop, double* Mp,
-                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
-                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
+                                            std::vector<std::shared_ptr<TwoBodyAOInt>> eri);
     void compute_sparse_pQq_blocking_p_symm_abw(double eta, const size_t start, const size_t stop, double* just_Mp, double* param_Mp,
                                         std::vector<std::shared_ptr<TwoBodyAOInt>> eri,
-                                        std::vector<std::shared_ptr<TwoBodyAOInt>> weri,
-                                        std::vector<std::shared_ptr<TwoBodyAOInt>> eri_sr);
+                                        std::vector<std::shared_ptr<TwoBodyAOInt>> weri);
 
     void prepare_AO(double omega, double eta);
     void prepare_AO_core(double omega, double eta);
