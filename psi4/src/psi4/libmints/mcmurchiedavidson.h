@@ -53,7 +53,6 @@ void fill_R_matrix_reg(int maxam, double p, double eta, const Point& PC, std::ve
                    std::shared_ptr<const libint2::FmEval_Chebyshev7<double>> fm_eval);
 void fill_R_matrix_erf(int maxam, double p, double omega, const Point& PC, std::vector<double>& R,
                    std::shared_ptr<const libint2::FmEval_Chebyshev7<double>> fm_eval);
-
 std::vector<std::array<int, 3>> generate_am_components_cca(int am);
 
 inline int cumulative_cart_dim(int L) { return ((L + 1) * (L + 2) * (L + 3)) / 6; }
@@ -67,6 +66,10 @@ class MDHelper {
     std::vector<double> Ex;
     std::vector<double> Ey;
     std::vector<double> Ez;
+
+    std::vector<double> Sx;
+    std::vector<double> Sy;
+    std::vector<double> Sz;
     std::vector<std::vector<std::array<int, 3>>> am_comps_;
 
    public:
@@ -86,6 +89,10 @@ class MDHelper {
         Ex = std::vector<double>(esize);
         Ey = std::vector<double>(esize);
         Ez = std::vector<double>(esize);
+
+        Sx = std::vector<double>(esize);
+        Sy = std::vector<double>(esize);
+        Sz = std::vector<double>(esize);
     };
 };
 
