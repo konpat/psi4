@@ -1843,8 +1843,6 @@ void FISAPT::unify() {
             jklr_->print_header();
     
             jklr_->compute(options_.get_double("ETA"));
-<<<<<<< HEAD
-=======
             matrices_["J_A_lr"] = matrices_["J0A"]->clone();
             matrices_["J_A_lr"]->subtract(J_lr[0]);
             matrices_["J_B_lr"] = matrices_["J0B"]->clone();
@@ -1854,7 +1852,6 @@ void FISAPT::unify() {
             matrices_["K_B_lr"] = matrices_["K0B"]->clone();
             matrices_["K_B_lr"]->subtract(K_lr[1]);
             matrices_["J_B_lr"]->print();
->>>>>>> f35e5a5f2941d3a57b60af2cd345c841b1666abb
         } 
 
         if (int_type == "ERF") {
@@ -1864,21 +1861,12 @@ void FISAPT::unify() {
             jklr_->print_header();
     
             jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
-<<<<<<< HEAD
-        } 
-
-        matrices_["J_A_lr"] = J_lr[0]->clone();
-        matrices_["J_B_lr"] = J_lr[1]->clone();
-        matrices_["K_A_lr"] = K_lr[0]->clone();
-        matrices_["K_B_lr"] = K_lr[1]->clone();
-=======
             matrices_["J_A_lr"] = J_lr[0];
             matrices_["J_B_lr"] = J_lr[1];
             matrices_["K_A_lr"] = K_lr[0];
             matrices_["K_B_lr"] = K_lr[1];
         } 
 
->>>>>>> f35e5a5f2941d3a57b60af2cd345c841b1666abb
     }
 
     matrices_["AlloccA"] = AlloccA;
@@ -3189,14 +3177,20 @@ void FISAPT::exch() {
     Crlr.clear();
     Cllr.push_back(Cocc_A);
     Crlr.push_back(C_O);
+
+    int nm = primary_->nbf();
+    auto K_O_lr = std::make_shared<Matrix>("K_O_lr",nm,nm);
+
     if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
+        K_O_lr = K_O->clone();
+        K_O_lr->subtract(K_lr[0]);
     }
 
     if (int_type == "ERF") {
         jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
+        K_O_lr = K_lr[0];
     }
-    std::shared_ptr<Matrix> K_O_lr = K_lr[0];
 
     double Exch10_2M = 0.0;
     std::vector<double> Exch10_2M_terms;
@@ -3258,14 +3252,19 @@ void FISAPT::exch() {
     Crlr.clear();
     Cllr.push_back(Cocc_A);
     Crlr.push_back(C_AS);
+
+    auto K_AS_lr = std::make_shared<Matrix>("K_AS_lr",nm,nm);
+
     if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
+        K_AS_lr = K_AS->clone();
+        K_AS_lr->subtract(K_lr[0]);
     }
 
     if (int_type == "ERF") {
         jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
+        K_AS_lr = K_lr[0];
     }
-    std::shared_ptr<Matrix> K_AS_lr = K_lr[0];
 
     // => Accumulation <= //
 
@@ -3372,18 +3371,32 @@ void FISAPT::exch() {
     Cllr.push_back(matrices_["Cocc0A"]);
     Crlr.push_back(C_T_AB_n);
 
+    auto J_T_A_n_lr = std::make_shared<Matrix>("J_T_A_n_lr",nm,nm);
+    auto K_T_A_n_lr = std::make_shared<Matrix>("K_T_A_n_lr",nm,nm);
+    auto J_T_AB_n_lr = std::make_shared<Matrix>("J_T_AB_n_lr",nm,nm);
+    auto K_T_AB_n_lr = std::make_shared<Matrix>("K_T_AB_n_lr",nm,nm);
+
     if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
+
+        J_T_A_n_lr = J_T_A_n->clone();
+        J_T_A_n_lr->subtract(J_lr[0]);
+        K_T_A_n_lr = K_T_A_n->clone();
+        K_T_A_n_lr->subtract(K_lr[0]);
+        J_T_AB_n_lr = J_T_AB_n->clone();
+        J_T_AB_n_lr->subtract(J_lr[1]);
+        K_T_AB_n_lr = K_T_AB_n->clone();
+        K_T_AB_n_lr->subtract(K_lr[1]);
     }
 
     if (int_type == "ERF") {
         jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
-    }
 
-    std::shared_ptr<Matrix> J_T_A_n_lr = J_lr[0];
-    std::shared_ptr<Matrix> K_T_A_n_lr = K_lr[0];
-    std::shared_ptr<Matrix> J_T_AB_n_lr = J_lr[1];
-    std::shared_ptr<Matrix> K_T_AB_n_lr = K_lr[1];
+        J_T_A_n_lr = J_lr[0];
+        K_T_A_n_lr = K_lr[0];
+        J_T_AB_n_lr = J_lr[1];
+        K_T_AB_n_lr = K_lr[1];
+    }
 
     std::shared_ptr<Matrix> T_A_n = linalg::doublet(matrices_["Cocc0A"], C_T_A_n, false, true);
     std::shared_ptr<Matrix> T_B_n = linalg::doublet(matrices_["Cocc0B"], C_T_B_n, false, true);
@@ -3512,18 +3525,33 @@ void FISAPT::exch() {
     Crlr.push_back(C_AOY);
     Crlr.push_back(C_XOY);
 
+    int nm = primary_->nbf();
+    auto K_AOB_lr = std::make_shared<Matrix>("K_AOB_lr",nm,nm);
+    auto K_XOB_lr = std::make_shared<Matrix>("K_XOB_lr",nm,nm);
+    auto K_AOY_lr = std::make_shared<Matrix>("K_AOY_lr",nm,nm);
+    auto K_XOY_lr = std::make_shared<Matrix>("K_XOY_lr",nm,nm);
+
     if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
+
+        K_AOB_lr = K_AOB->clone();
+        K_AOB_lr->subtract(K_lr[0]);
+        K_XOB_lr = K_XOB->clone();
+        K_XOB_lr->subtract(K_lr[1]);
+        K_AOY_lr = K_AOY->clone();
+        K_AOY_lr->subtract(K_lr[2]);
+        K_XOY_lr = K_XOY->clone();
+        K_XOY_lr->subtract(K_lr[3]);
     }
 
     if (int_type == "ERF") {
         jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
-    }
 
-    std::shared_ptr<Matrix> K_AOB_lr = K_lr[0];
-    std::shared_ptr<Matrix> K_XOB_lr = K_lr[1];
-    std::shared_ptr<Matrix> K_AOY_lr = K_lr[2];
-    std::shared_ptr<Matrix> K_XOY_lr = K_lr[3];
+        K_AOB_lr = K_lr[0];
+        K_XOB_lr = K_lr[1];
+        K_AOY_lr = K_lr[2];
+        K_XOY_lr = K_lr[3];
+    }
 
     if (options_.get_bool("FISAPT_EXCH_PARPERP")) {
 // we calculate the parallel and perpendicular results separately - Eq. (5) with the upper and lower signs
@@ -3967,22 +3995,22 @@ void FISAPT::exch() {
 
     if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
-        std::shared_ptr<Matrix> J_ss_lr = J_ss->clone();
+        J_ss_lr = J_ss->clone();
         J_ss_lr->subtract(J_lr[0]);
-        std::shared_ptr<Matrix> K_ss_lr = K_ss->clone();
+        K_ss_lr = K_ss->clone();
         K_ss_lr->subtract(K_lr[0]);
-        std::shared_ptr<Matrix> J_os_lr = J_os->clone();
+        J_os_lr = J_os->clone();
         J_os_lr->subtract(J_lr[1]);
-        std::shared_ptr<Matrix> K_os_lr = K_os->clone();
+        K_os_lr = K_os->clone();
         K_os_lr->subtract(K_lr[1]);
     }
 
     if (int_type == "ERF") {
         jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
-        std::shared_ptr<Matrix> J_ss_lr = J_lr[0];
-        std::shared_ptr<Matrix> K_ss_lr = K_lr[0];
-        std::shared_ptr<Matrix> J_os_lr = J_lr[1];
-        std::shared_ptr<Matrix> K_os_lr = K_lr[1];
+        J_ss_lr = J_lr[0];
+        K_ss_lr = K_lr[0];
+        J_os_lr = J_lr[1];
+        K_os_lr = K_lr[1];
     }
 
 
@@ -4138,22 +4166,22 @@ void FISAPT::exch() {
 
     if (int_type == "GAU") {
         jklr_->compute(options_.get_double("ETA"));
-        std::shared_ptr<Matrix> J2_ss_lr = J2_ss->clone();
+        J2_ss_lr = J2_ss->clone();
         J2_ss_lr->subtract(J_lr[0]);
-        std::shared_ptr<Matrix> K2_ss_lr = K2_ss->clone();
+        K2_ss_lr = K2_ss->clone();
         K2_ss_lr->subtract(K_lr[0]);
-        std::shared_ptr<Matrix> J2_os_lr = J2_os->clone();
+        J2_os_lr = J2_os->clone();
         J2_os_lr->subtract(J_lr[1]);
-        std::shared_ptr<Matrix> K2_os_lr = K2_os->clone();
+        K2_os_lr = K2_os->clone();
         K2_os_lr->subtract(K_lr[1]);
     }
 
     if (int_type == "ERF") {
         jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
-        std::shared_ptr<Matrix> J2_ss_lr = J_lr[0];
-        std::shared_ptr<Matrix> K2_ss_lr = K_lr[0];
-        std::shared_ptr<Matrix> J2_os_lr = J_lr[1];
-        std::shared_ptr<Matrix> K2_os_lr = K_lr[1];
+        J2_ss_lr = J_lr[0];
+        K2_ss_lr = K_lr[0];
+        J2_os_lr = J_lr[1];
+        K2_os_lr = K_lr[1];
     }
 
     K2_ss_lr->transpose_this();
@@ -4346,26 +4374,26 @@ void FISAPT::ind() {
         if (int_type == "GAU") {
             jklr_->compute(options_.get_double("ETA"));
 
-            std::shared_ptr<Matrix> K_AOB_lr = K_AOB->clone();
+            K_AOB_lr = K_AOB->clone();
             K_AOB_lr->subtract(K_lr[0]);
-            std::shared_ptr<Matrix> K_XOB_lr = K_XOB->clone();
+            K_XOB_lr = K_XOB->clone();
             K_XOB_lr->subtract(K_lr[1]);
-            std::shared_ptr<Matrix> K_AOY_lr = K_AOY->clone();
+            K_AOY_lr = K_AOY->clone();
             K_AOY_lr->subtract(K_lr[2]);
-            std::shared_ptr<Matrix> K_XOY_lr = K_XOY->clone();
+            K_XOY_lr = K_XOY->clone();
             K_XOY_lr->subtract(K_lr[3]);
-            std::shared_ptr<Matrix> J_XOY_lr = J_XOY->clone();
+            J_XOY_lr = J_XOY->clone();
             J_XOY_lr->subtract(J_lr[3]);
         }
     
         if (int_type == "ERF") {
             jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
 
-            std::shared_ptr<Matrix> K_AOB_lr = K_lr[0];
-            std::shared_ptr<Matrix> K_XOB_lr = K_lr[1];
-            std::shared_ptr<Matrix> K_AOY_lr = K_lr[2];
-            std::shared_ptr<Matrix> K_XOY_lr = K_lr[3];
-            std::shared_ptr<Matrix> J_XOY_lr = J_lr[3];
+            K_AOB_lr = K_lr[0];
+            K_XOB_lr = K_lr[1];
+            K_AOY_lr = K_lr[2];
+            K_XOY_lr = K_lr[3];
+            J_XOY_lr = J_lr[3];
         }
 
         outfile->Printf("  test ind 1 \n\n");
@@ -4469,49 +4497,49 @@ void FISAPT::ind() {
         if (int_type == "GAU") {
             jklr_->compute(options_.get_double("ETA"));
       
-            std::shared_ptr<Matrix> J_O_lr = J_O->clone();
+            J_O_lr = J_O->clone();
             J_O_lr->subtract(J_lr[0]);
-            std::shared_ptr<Matrix> J_P_B_lr = J_P_B->clone();
+            J_P_B_lr = J_P_B->clone();
             J_P_B_lr->subtract(J_lr[1]);
-            std::shared_ptr<Matrix> J_P_A_lr = J_P_A->clone();
+            J_P_A_lr = J_P_A->clone();
             J_P_A_lr->subtract(J_lr[2]);
-            std::shared_ptr<Matrix> J_P_BXY_lr = J_P_BXY->clone();
+            J_P_BXY_lr = J_P_BXY->clone();
             J_P_BXY_lr->subtract(J_lr[3]);
-            std::shared_ptr<Matrix> J_P_YXB_lr = J_P_YXB->clone();
+            J_P_YXB_lr = J_P_YXB->clone();
             J_P_YXB_lr->subtract(J_lr[4]);
-            std::shared_ptr<Matrix> J_P_YAY_lr = J_P_YAY->clone();
+            J_P_YAY_lr = J_P_YAY->clone();
             J_P_YAY_lr->subtract(J_lr[5]);
-            std::shared_ptr<Matrix> J_P_AYX_lr = J_P_AYX->clone();
+            J_P_AYX_lr = J_P_AYX->clone();
             J_P_AYX_lr->subtract(J_lr[6]);
-            std::shared_ptr<Matrix> J_P_XYA_lr = J_P_XYA->clone();
+            J_P_XYA_lr = J_P_XYA->clone();
             J_P_XYA_lr->subtract(J_lr[7]);
-            std::shared_ptr<Matrix> J_P_XBX_lr = J_P_XBX->clone();
+            J_P_XBX_lr = J_P_XBX->clone();
             J_P_XBX_lr->subtract(J_lr[8]);
           
-            std::shared_ptr<Matrix> K_O_lr = K_O->clone();
+            K_O_lr = K_O->clone();
             K_O_lr->subtract(K_lr[0]);
-            std::shared_ptr<Matrix> K_P_B_lr = K_P_B->clone();
+            K_P_B_lr = K_P_B->clone();
             K_P_B_lr->subtract(K_lr[1]);
-            std::shared_ptr<Matrix> K_P_A_lr = K_P_A->clone();
+            K_P_A_lr = K_P_A->clone();
             K_P_A_lr->subtract(K_lr[2]);
         }
     
         if (int_type == "ERF") {
             jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
       
-            std::shared_ptr<Matrix> J_O_lr = J_lr[0];
-            std::shared_ptr<Matrix> J_P_B_lr = J_lr[1];
-            std::shared_ptr<Matrix> J_P_A_lr = J_lr[2];
-            std::shared_ptr<Matrix> J_P_BXY_lr = J_lr[3];
-            std::shared_ptr<Matrix> J_P_YXB_lr = J_lr[4];
-            std::shared_ptr<Matrix> J_P_YAY_lr = J_lr[5];
-            std::shared_ptr<Matrix> J_P_AYX_lr = J_lr[6];
-            std::shared_ptr<Matrix> J_P_XYA_lr = J_lr[7];
-            std::shared_ptr<Matrix> J_P_XBX_lr = J_lr[8];
+            J_O_lr = J_lr[0];
+            J_P_B_lr = J_lr[1];
+            J_P_A_lr = J_lr[2];
+            J_P_BXY_lr = J_lr[3];
+            J_P_YXB_lr = J_lr[4];
+            J_P_YAY_lr = J_lr[5];
+            J_P_AYX_lr = J_lr[6];
+            J_P_XYA_lr = J_lr[7];
+            J_P_XBX_lr = J_lr[8];
           
-            std::shared_ptr<Matrix> K_O_lr = K_lr[0];
-            std::shared_ptr<Matrix> K_P_B_lr = K_lr[1];
-            std::shared_ptr<Matrix> K_P_A_lr = K_lr[2];
+            K_O_lr = K_lr[0];
+            K_P_B_lr = K_lr[1];
+            K_P_A_lr = K_lr[2];
             }
 
         outfile->Printf("  test ind 2 \n\n");
@@ -4812,53 +4840,34 @@ void FISAPT::ind() {
       
         std::string int_type = options_.get_str("RSEP_INT");
         if (int_type == "GAU") {
-<<<<<<< HEAD
-        jklr_->compute(options_.get_double("ETA"));
-        }
-    
-        if (int_type == "ERF") {
-            jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
-        }
-      
-        // => Unload the JK Object <= //
-      
-        std::shared_ptr<Matrix> J_O_lr = J_lr[0];
-        std::shared_ptr<Matrix> J_P_B_lr = J_lr[1];
-        std::shared_ptr<Matrix> J_P_A_lr = J_lr[2];
-      
-        std::shared_ptr<Matrix> K_O_lr = K_lr[0];
-        std::shared_ptr<Matrix> K_P_B_lr = K_lr[1];
-        std::shared_ptr<Matrix> K_P_A_lr = K_lr[2];
-=======
             jklr_->compute(options_.get_double("ETA"));
       
-            std::shared_ptr<Matrix> J_O_lr = J_O->clone();
+            J_O_lr = J_O->clone();
             J_O_lr->subtract(J_lr[0]);
-            std::shared_ptr<Matrix> J_P_B_lr = J_P_B->clone();
+            J_P_B_lr = J_P_B->clone();
             J_P_B_lr->subtract(J_lr[1]);
-            std::shared_ptr<Matrix> J_P_A_lr = J_P_A->clone();
+            J_P_A_lr = J_P_A->clone();
             J_P_A_lr->subtract(J_lr[2]);
           
-            std::shared_ptr<Matrix> K_O_lr = K_O->clone();
+            K_O_lr = K_O->clone();
             K_O_lr->subtract(K_lr[0]);
-            std::shared_ptr<Matrix> K_P_B_lr = K_P_B->clone();
+            K_P_B_lr = K_P_B->clone();
             K_P_B_lr->subtract(K_lr[1]);
-            std::shared_ptr<Matrix> K_P_A_lr = K_P_A->clone();
+            K_P_A_lr = K_P_A->clone();
             K_P_A_lr->subtract(K_lr[2]);
         }
     
         if (int_type == "ERF") {
             jklr_->compute(options_.get_double("RSEP_OMEGA"), options_.get_double("ETA"));
       
-            std::shared_ptr<Matrix> J_O_lr = J_lr[0];
-            std::shared_ptr<Matrix> J_P_B_lr = J_lr[1];
-            std::shared_ptr<Matrix> J_P_A_lr = J_lr[2];
+            J_O_lr = J_lr[0];
+            J_P_B_lr = J_lr[1];
+            J_P_A_lr = J_lr[2];
           
-            std::shared_ptr<Matrix> K_O_lr = K_lr[0];
-            std::shared_ptr<Matrix> K_P_B_lr = K_lr[1];
-            std::shared_ptr<Matrix> K_P_A_lr = K_lr[2];
+            K_O_lr = K_lr[0];
+            K_P_B_lr = K_lr[1];
+            K_P_A_lr = K_lr[2];
         }
->>>>>>> f35e5a5f2941d3a57b60af2cd345c841b1666abb
 
         // ==> Generalized ESP (Flat and Exchange) <== //
        
@@ -6578,208 +6587,10 @@ void FISAPT::disp(std::map<std::string, SharedMatrix> matrix_cache, std::map<std
         outfile->Printf("    Exch-Disp20         = %18.12lf [Eh]\n", ExchDisp20);
         outfile->Printf("\n");
     }
-<<<<<<< HEAD
-    std::string int_type = options_.get_str("RSEP_INT");
-    double eta = options_.get_double("ETA");
-// now long-range version
-    if (int_type == "GAU") {
-        auto dfh_lr(std::make_shared<DFHelper>(eta, primary_, auxiliary));
-        dfh_lr->set_memory(doubles_ - Cs[0]->nrow() * ncol);
-        dfh_lr->set_method("DIRECT_iaQ");
-        dfh_lr->set_nthreads(nT);
-        dfh_lr->initialize(eta);
-        dfh_lr->print_header();
-    }
-    if (int_type == "ERF") {
-        double omega = options_.get_double("RSEP_OMEGA");
-        auto dfh_lr(std::make_shared<DFHelper>(omega, eta, primary_, auxiliary));
-        dfh_lr->set_memory(doubles_ - Cs[0]->nrow() * ncol);
-        dfh_lr->set_method("DIRECT_iaQ");
-        dfh_lr->set_nthreads(nT);
-        dfh_lr->initialize(omega, eta);
-        dfh_lr->print_header();
-    }
-    dfh_lr->add_space("a", Cs[0]);
-    dfh_lr->add_space("r", Cs[1]);
-    dfh_lr->add_space("b", Cs[2]);
-    dfh_lr->add_space("s", Cs[3]);
-    dfh_lr->add_space("r1", Cs[4]);
-    dfh_lr->add_space("s1", Cs[5]);
-    dfh_lr->add_space("a2", Cs[6]);
-    dfh_lr->add_space("b2", Cs[7]);
-    dfh_lr->add_space("r3", Cs[8]);
-    dfh_lr->add_space("s3", Cs[9]);
-    dfh_lr->add_space("a4", Cs[10]);
-    dfh_lr->add_space("b4", Cs[11]);
-
-    dfh_lr->add_transformation("Aar", "a", "r");
-    dfh_lr->add_transformation("Abs", "b", "s");
-    dfh_lr->add_transformation("Bas", "a", "s1");
-    dfh_lr->add_transformation("Bbr", "b", "r1");
-    dfh_lr->add_transformation("Cas", "a2", "s");
-    dfh_lr->add_transformation("Cbr", "b2", "r");
-    dfh_lr->add_transformation("Dar", "a", "r3");
-    dfh_lr->add_transformation("Dbs", "b", "s3");
-    dfh_lr->add_transformation("Ear", "a4", "r");
-    dfh_lr->add_transformation("Ebs", "b4", "s");
-
-    dfh_lr->transform();
-
-    Cr1.reset();
-    Cs1.reset();
-    Ca2.reset();
-    Cb2.reset();
-    Cr3.reset();
-    Cs3.reset();
-    Ca4.reset();
-    Cb4.reset();
-    Cs.clear();
-    dfh_lr->clear_spaces();
-
-    // => Thread Work Arrays <= //
-
-    std::vector<std::shared_ptr<Matrix> > Trs_lr;
-    std::vector<std::shared_ptr<Matrix> > Vrs_lr;
-    for (int t = 0; t < nT; t++) {
-        Trs_lr.push_back(std::make_shared<Matrix>("Trs", nr, ns));
-        Vrs_lr.push_back(std::make_shared<Matrix>("Vrs", nr, ns));
-    }
-
-    // => Pointers <= //
-
-    double** Qasp_lr = Qas_lr->pointer();
-    double** Qbrp_lr = Qbr_lr->pointer();
-    double** Qarp_lr = Qar_lr->pointer();
-    double** Qbsp_lr = Qbs_lr->pointer();
-
-    // => Slice D + E -> D <= //
-
-    dfh_lr->add_disk_tensor("Far", std::make_tuple(na, nr, nQ));
-
-    for (size_t astart = 0; astart < na; astart += max_a) {
-        size_t nablock = (astart + max_a >= na ? na - astart : max_a);
-
-        dfh_lr->fill_tensor("Dar", Dar, {astart, astart + nablock});
-        dfh_lr->fill_tensor("Ear", Aar, {astart, astart + nablock});
-
-        double* D2p = Darp[0];
-        double* A2p = Aarp[0];
-        for (long int arQ = 0L; arQ < nablock * nrQ; arQ++) {
-            (*D2p++) += (*A2p++);
-        }
-        dfh_lr->write_disk_tensor("Far", Dar, {astart, astart + nablock});
-    }
-
-    dfh_lr->add_disk_tensor("Fbs", std::make_tuple(nb, ns, nQ));
-
-    for (size_t bstart = 0; bstart < nb; bstart += max_b) {
-        size_t nbblock = (bstart + max_b >= nb ? nb - bstart : max_b);
-
-        dfh_lr->fill_tensor("Dbs", Dbs, {bstart, bstart + nbblock});
-        dfh_lr->fill_tensor("Ebs", Abs, {bstart, bstart + nbblock});
-
-        double* D2p = Dbsp[0];
-        double* A2p = Absp[0];
-        for (long int bsQ = 0L; bsQ < nbblock * nsQ; bsQ++) {
-            (*D2p++) += (*A2p++);
-        }
-        dfh_lr->write_disk_tensor("Fbs", Dbs, {bstart, bstart + nbblock});
-    }
-
-    // => Targets <= //
-
-    double Disp20_lr = 0.0;
-    double ExchDisp20_lr = 0.0;
-
-    // ==> Master Loop <== //
-
-    for (size_t astart = 0; astart < na; astart += max_a) {
-        size_t nablock = (astart + max_a >= na ? na - astart : max_a);
-
-        dfh_lr->fill_tensor("Aar", Aar, {astart, astart + nablock});
-        dfh_lr->fill_tensor("Bas", Bas, {astart, astart + nablock});
-        dfh_lr->fill_tensor("Cas", Cas, {astart, astart + nablock});
-        dfh_lr->fill_tensor("Far", Dar, {astart, astart + nablock});
-
-        for (size_t bstart = 0; bstart < nb; bstart += max_b) {
-            size_t nbblock = (bstart + max_b >= nb ? nb - bstart : max_b);
-
-            dfh_lr->fill_tensor("Abs", Abs, {bstart, bstart + nbblock});
-            dfh_lr->fill_tensor("Bbr", Bbr, {bstart, bstart + nbblock});
-            dfh_lr->fill_tensor("Cbr", Cbr, {bstart, bstart + nbblock});
-            dfh_lr->fill_tensor("Fbs", Dbs, {bstart, bstart + nbblock});
-
-            long int nab = nablock * nbblock;
-
-#pragma omp parallel for schedule(dynamic) reduction(+ : Disp20, ExchDisp20)
-            for (long int ab = 0L; ab < nab; ab++) {
-                int a = ab / nbblock;
-                int b = ab % nbblock;
-
-                int thread = 0;
-#ifdef _OPENMP
-                thread = omp_get_thread_num();
-#endif
-
-                double** Trsp = Trs[thread]->pointer();
-                double** Vrsp = Vrs[thread]->pointer();
-
-                // => Amplitudes, Disp20 <= //
-
-                C_DGEMM('N', 'T', nr, ns, nQ, 1.0, Aarp[(a)*nr], nQ, Absp[(b)*ns], nQ, 0.0, Vrsp[0], ns);
-
-                for (int r = 0; r < nr; r++) {
-                    for (int s = 0; s < ns; s++) {
-                        Trsp[r][s] = Vrsp[r][s] / (eap[a + astart] + ebp[b + bstart] - erp[r] - esp[s]);
-                        Disp20_lr += 4.0 * Trsp[r][s] * Vrsp[r][s];
-                    }
-                }
-
-                // => Exch-Disp20 <= //
-
-                // > Q1-Q3 < //
-
-                C_DGEMM('N', 'T', nr, ns, nQ, 1.0, Bbrp[(b)*nr], nQ, Basp[(a)*ns], nQ, 0.0, Vrsp[0], ns);
-                C_DGEMM('N', 'T', nr, ns, nQ, 1.0, Cbrp[(b)*nr], nQ, Casp[(a)*ns], nQ, 1.0, Vrsp[0], ns);
-                C_DGEMM('N', 'T', nr, ns, nQ, 1.0, Aarp[(a)*nr], nQ, Dbsp[(b)*ns], nQ, 1.0, Vrsp[0], ns);
-                C_DGEMM('N', 'T', nr, ns, nQ, 1.0, Darp[(a)*nr], nQ, Absp[(b)*ns], nQ, 1.0, Vrsp[0], ns);
-
-                // > V,J,K < //
-
-                C_DGER(nr, ns, 1.0, Qbrp_lr[b + bstart], 1, Sasp[a + astart], 1, Vrsp[0], ns);
-                C_DGER(nr, ns, 1.0, Sbrp[b + bstart], 1, Qasp_lr[a + astart], 1, Vrsp[0], ns);
-                C_DGER(nr, ns, 1.0, Qarp_lr[a + astart], 1, SAbsp[b + bstart], 1, Vrsp[0], ns);
-                C_DGER(nr, ns, 1.0, SBarp[a + astart], 1, Qbsp_lr[b + bstart], 1, Vrsp[0], ns);
-
-                for (int r = 0; r < nr; r++) {
-                    for (int s = 0; s < ns; s++) {
-                        ExchDisp20_lr -= 2.0 * Trsp[r][s] * Vrsp[r][s];
-                    }
-                }
-            }
-        }
-    }
-
-    if (do_print) {
-        outfile->Printf("    Disp20           lr = %18.12lf [Eh]\n", Disp20_lr);
-        outfile->Printf("    Exch-Disp20      lr = %18.12lf [Eh]\n", ExchDisp20_lr);
-        outfile->Printf("\n");
-    }
-}
-
-// Compute total dispersion energy and S-infinity version of total exchange-dispersion
-// This code applies to regular SAPT, not FISAPT, and is called from the SAPT workflow when DO_DISP_EXCH_SINF == true.
-void FISAPT::sinf_disp(std::map<std::string, SharedMatrix> matrix_cache, std::map<std::string, SharedVector> vector_cache,
-                        bool do_print) {
-    if (do_print) {
-        outfile->Printf("  ==> Dispersion <==\n\n");
-    }
-=======
     double eta = options_.get_double("ETA");
     double omega = options_.get_double("RSEP_OMEGA");
 // now long-range version
     // => Targets <= //
->>>>>>> f35e5a5f2941d3a57b60af2cd345c841b1666abb
 
     double Disp20_lr = 0.0;
     double ExchDisp20_lr = 0.0;
