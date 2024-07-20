@@ -2194,16 +2194,16 @@ void FISAPT::unify_part2() {
     
             outfile->Printf(" jklr test 7  \n\n");
 
-            matrices_["J_A_lr"] = matrices_["J0A"]->clone();
+            matrices_["J_A_lr"] = matrices_["J_A"]->clone();
             matrices_["J_A_lr"]->subtract(J_lr[0]);
             matrices_["J_A_lr"]->subtract(J_lr[2]);
-            matrices_["J_B_lr"] = matrices_["J0B"]->clone();
+            matrices_["J_B_lr"] = matrices_["J_B"]->clone();
             matrices_["J_B_lr"]->subtract(J_lr[1]);
             matrices_["J_B_lr"]->subtract(J_lr[3]);
-            matrices_["K_A_lr"] = matrices_["K0A"]->clone();
+            matrices_["K_A_lr"] = matrices_["K_A"]->clone();
             matrices_["K_A_lr"]->subtract(K_lr[0]);
             matrices_["K_A_lr"]->subtract(K_lr[2]);
-            matrices_["K_B_lr"] = matrices_["K0B"]->clone();
+            matrices_["K_B_lr"] = matrices_["K_B"]->clone();
             matrices_["K_B_lr"]->subtract(K_lr[1]);
             matrices_["K_B_lr"]->subtract(K_lr[3]);
 
