@@ -3977,9 +3977,6 @@ void FISAPT::exch() {
     std::shared_ptr<Matrix> J_os = J[1];
     std::shared_ptr<Matrix> K_os = K[1];
 
-    K_ss->transpose_this();
-    K_os->transpose_this();
-
     Cllr.clear();
     Crlr.clear();
     Cllr.push_back(Dsj_ssh);
@@ -4013,6 +4010,8 @@ void FISAPT::exch() {
         K_os_lr = K_lr[1];
     }
 
+    K_ss->transpose_this();
+    K_os->transpose_this();
 
     K_ss_lr->transpose_this();
     K_os_lr->transpose_this();
@@ -4149,9 +4148,6 @@ void FISAPT::exch() {
     std::shared_ptr<Matrix> J2_os = J[1];
     std::shared_ptr<Matrix> K2_os = K[1];
 
-    K2_ss->transpose_this();
-    K2_os->transpose_this();
-
     Cllr.clear();
     Crlr.clear();
     Cllr.push_back(Dsj_ssh);
@@ -4183,6 +4179,9 @@ void FISAPT::exch() {
         J2_os_lr = J_lr[1];
         K2_os_lr = K_lr[1];
     }
+
+    K2_ss->transpose_this();
+    K2_os->transpose_this();
 
     K2_ss_lr->transpose_this();
     K2_os_lr->transpose_this();
