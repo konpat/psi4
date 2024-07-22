@@ -7389,8 +7389,8 @@ void FISAPT::print_trailer() {
         scalars_["Electrostatics"] += scalars_["Extern-Extern"];
     }
     scalars_["Exchange"] = scalars_["Exch10 lr"];
-    scalars_["Induction"] = scalars_["Ind20,r lr"] + scalars_["Exch-Ind20,r lr"] + scalars_["delta HF,r (2) lr"];
-    scalars_["sInduction"] = scalars_["Ind20,r lr"] + scalars_["sExch-Ind20,r"] + scalars_["delta HF,r (2) lr"];
+    scalars_["Induction"] = scalars_["Ind20,r lr"] + scalars_["Exch-Ind20,r lr"] + scalars_["delta HF,r (2)"];
+    scalars_["sInduction"] = scalars_["Ind20,r lr"] + scalars_["sExch-Ind20,r"] + scalars_["delta HF,r (2)"];
     scalars_["Dispersion"] = scalars_["Disp20 lr"] + scalars_["Exch-Disp20 lr"];
     scalars_["sDispersion"] = scalars_["Disp20 lr"] + scalars_["sExch-Disp20"];
     scalars_["SAPT"] =
@@ -7442,8 +7442,8 @@ void FISAPT::print_trailer() {
                     scalars_["Exch-Ind20,r lr"] * 1000.0, scalars_["Exch-Ind20,r lr"] * pc_hartree2kcalmol,
                     scalars_["Exch-Ind20,r lr"] * pc_hartree2kJmol);
     outfile->Printf("      delta HF,r (2) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n", scaled.c_str(),
-                    scalars_["delta HF,r (2) lr"] * 1000.0, scalars_["delta HF,r (2) lr"] * pc_hartree2kcalmol,
-                    scalars_["delta HF,r (2) lr"] * pc_hartree2kJmol);
+                    scalars_["delta HF,r (2)"] * 1000.0, scalars_["delta HF,r (2)"] * pc_hartree2kcalmol,
+                    scalars_["delta HF,r (2)"] * pc_hartree2kJmol);
     outfile->Printf("      Induction (A<-B) %3s    %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n", scaled.c_str(),
                     scalars_["Induction (A<-B)"] * 1000.0, scalars_["Induction (A<-B)"] * pc_hartree2kcalmol,
                     scalars_["Induction (A<-B)"] * pc_hartree2kJmol);
