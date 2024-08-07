@@ -1503,6 +1503,8 @@ void export_mints(py::module& m) {
              "eta"_a, "order"_a, "deriv"_a = 0)
         .def("ao_multipole_potential_erf", &MintsHelper::ao_multipole_potential_erf, "Vector AO multipole potential integrals",
              "omega"_a, "order"_a, "deriv"_a = 0)
+        .def("ao_multipole_potential_erfgau", &MintsHelper::ao_multipole_potential_erfgau, "Vector AO multipole potential integrals",
+             "omega"_a, "order"_a, "deriv"_a = 0)
         .def("electric_field", &MintsHelper::electric_field, "Vector electric field integrals",
              "origin"_a, "deriv"_a = 0)
         .def("induction_operator", &MintsHelper::induction_operator,

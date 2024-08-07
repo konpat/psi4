@@ -481,6 +481,7 @@ class PSI_API IntegralFactory {
     virtual std::unique_ptr<OneBodyAOInt> ao_multipole_potential(int order, int deriv = 0);
     virtual std::unique_ptr<OneBodyAOInt> ao_multipole_potential_reg(double eta, int order, int deriv = 0);
     virtual std::unique_ptr<OneBodyAOInt> ao_multipole_potential_erf(double omega, int order, int deriv = 0);
+    virtual std::unique_ptr<OneBodyAOInt> ao_multipole_potential_erfgau(double omega, int order, int deriv = 0);
 
     /// Returns an OneBodyInt that computes the electric field
     virtual std::unique_ptr<OneBodyAOInt> electric_field(int deriv = 0);

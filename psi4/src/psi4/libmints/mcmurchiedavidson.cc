@@ -401,5 +401,70 @@ void fill_R_matrix_erf(int maxam, double p, double omega, const Point& PC, std::
 }
 
 
+void fill_R_matrix_erfgau(int maxam, double p, double omega, const Point& PC, std::vector<double>& R, double u, const Point& AB) {
+    // Generates the auxiliary integrals for Coulomb-type integrals using eq 9.9.13
+    // from Molecular Electronic-Structure Theory (10.1002/9781119019572)
+
+    //auto PC = point_diff(P, C);
+    auto RPC = point_norm(PC); 
+    auto RAB = point_norm(AB);
+
+    double exponent = (-2 / 3 * p * omega * omega) / (p + 1 / 3 * omega * omega);
+
+    int dim1 = maxam + 1;
+    int dim2 = dim1 * dim1 * dim1;
+    // R matrix buffer size needs to be at least dim1 * dim2,
+    // only zero out the required part of the buffer for performance
+    std::fill(R.begin(), R.begin() + dim1 * dim2, 0.0);
+ 
+    R[0] = pow(p / (p + 1/3 * omega * omega) , 1.5) * pow(M_PI / p, 1.5) * exp(-u * RAB * RAB) * exp(-1/3 * p * omega * omega * RPC * RPC / (p + 1/3 * omega * omega));
+
+    // t + u + v <= N
+    // t = 0, u = 0
+    for (int v = 1; v < dim1; ++v) {
+        for (int n = 0; n < maxam; ++n) {
+            double val = 0.0;
+            int noffset = n * dim2;
+            // eq 9.9.20
+            if (v > 1) {
+                val += exponent * (v - 1) * R[noffset + v - 2];  // R_{0,0,v-2}^{n+1}
+            }
+            val += exponent * PC[2] * R[noffset + v - 1];  // R_{0,0,v-1}^{n+1}
+            R[n * dim2 + v] = val;              // R_{0,0,v}^{n}
+        }
+    }
+    // t = 0
+    for (int v = 0; v < dim1; ++v) {
+        for (int u = 1; u < dim1 - v; ++u) {
+            for (int n = 0; n < maxam; ++n) {
+                double val = 0.0;
+                int noffset = n * dim2;
+                // eq 9.9.19
+                if (u > 1) {
+                    val += exponent * (u - 1) * R[noffset + (u - 2) * dim1 + v];  // R_{0,u-2,v}^{n+1}
+                }
+                val += exponent * PC[1] * R[noffset + (u - 1) * dim1 + v];  // R_{0,u-1,v}^{n+1}
+                R[n * dim2 + u * dim1 + v] = val;                // R_{0,u,v}^{n}
+            }
+        }
+    }
+    for (int v = 0; v < dim1; ++v) {
+        for (int u = 0; u < dim1 - v; ++u) {
+            for (int t = 1; t < dim1 - v - u; ++t) {
+                for (int n = 0; n < maxam; ++n) {
+                    double val = 0.0;
+                    int noffset = n * dim2;
+                    // eq 9.9.18
+                    if (t > 1) {
+                        val += exponent * (t - 1) * R[noffset + address_3d(t - 2, u, v, dim1, dim1)];  // R_{t-2,u,v}^{n+1}
+                    }
+                    val += exponent * PC[0] * R[noffset + address_3d(t - 1, u, v, dim1, dim1)];  // R_{t-1,u,v}^{n+1}
+                    R[n * dim2 + address_3d(t, u, v, dim1, dim1)] = val;              // R_{t,u,v}^{n}
+                }
+            }
+        }
+    }
+}
+
 
 }  // namespace mdintegrals

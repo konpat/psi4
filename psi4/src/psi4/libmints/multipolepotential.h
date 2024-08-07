@@ -150,4 +150,41 @@ class MultipolePotentialInt_erf : public OneBodyAOInt, public mdintegrals::MDHel
    //
 };
 
+
+class MultipolePotentialInt_erfgau : public OneBodyAOInt, public mdintegrals::MDHelper {
+    // maximum multipole potential order to compute (order of the 1/R derivative)
+    double omega_;
+    int order_;
+
+    //! CCA-ordered Cartesian components for the multipoles
+    std::vector<std::vector<std::array<int, 3>>> comps_der_;
+
+    //! R matrix (9.5.31)
+    std::vector<double> R;
+
+    //! Computes the multipole potential between two Gaussian shells.
+    void compute_pair_erfgau(double, const libint2::Shell&, const libint2::Shell&) override;
+
+   protected:
+    /// Matrix of coordinates/charges of partial charges
+//    SharedMatrix C;
+    std::vector<std::pair<double, std::array<double, 3>>> Zxyz_;
+
+   public:
+    //! Constructor. Do not call directly use an IntegralFactory.
+    MultipolePotentialInt_erfgau(double omega, std::vector<SphericalTransform>&, std::shared_ptr<BasisSet>, std::shared_ptr<BasisSet>,
+                          int order, int deriv = 0);
+    //! Virtual destructor
+    ~MultipolePotentialInt_erfgau() override;
+
+    void setOmega(double omega);
+
+   // Set the field of charges
+//    void set_charge_field(SharedMatrix C_) { C = C_; }
+    void set_charge_field(std::vector<std::pair<double, std::array<double, 3>>>& Zxyz);
+
+   // Get the field of charges
+//    SharedMatrix charge_field() const { return C; }
+   //
+};
 }  // namespace psi

@@ -53,6 +53,8 @@ void fill_R_matrix_reg(int maxam, double p, double eta, const Point& PC, std::ve
                    std::shared_ptr<const libint2::FmEval_Chebyshev7<double>> fm_eval);
 void fill_R_matrix_erf(int maxam, double p, double omega, const Point& PC, std::vector<double>& R,
                    std::shared_ptr<const libint2::FmEval_Chebyshev7<double>> fm_eval);
+void fill_R_matrix_erfgau(int maxam, double p, double omega, const Point& PC, std::vector<double>& R, double u, const Point& AB);
+
 std::vector<std::array<int, 3>> generate_am_components_cca(int am);
 
 inline int cumulative_cart_dim(int L) { return ((L + 1) * (L + 2) * (L + 3)) / 6; }

@@ -104,6 +104,7 @@ class PSI_API OneBodyAOInt {
     virtual void compute_pair(const libint2::Shell&, const libint2::Shell&);
     virtual void compute_pair_reg(double eta, const libint2::Shell&, const libint2::Shell&);
     virtual void compute_pair_erf(double omega, const libint2::Shell&, const libint2::Shell&);
+    virtual void compute_pair_erfgau(double omega, const libint2::Shell&, const libint2::Shell&);
 
     /// Compute first derivative integrals for a given shell pair
     virtual void compute_pair_deriv1(const libint2::Shell&, const libint2::Shell&);
@@ -135,6 +136,7 @@ class PSI_API OneBodyAOInt {
     void compute(SharedMatrix& result);
     void compute(double eta, SharedMatrix& result);
     void compute_erf(double omega, SharedMatrix& result);
+    void compute_erfgau(double omega, SharedMatrix& result);
 
     /*! @} */
 
@@ -142,6 +144,8 @@ class PSI_API OneBodyAOInt {
     virtual void compute(std::vector<SharedMatrix>& result);
     virtual void compute(double eta, std::vector<SharedMatrix>& result);
     virtual void compute_erf(double omega, std::vector<SharedMatrix>& result);
+    virtual void compute_erfgau(double omega, std::vector<SharedMatrix>& result);
+
     /// Does the method provide first derivatives?
     virtual bool has_deriv1() { return false; }
 
@@ -155,6 +159,8 @@ class PSI_API OneBodyAOInt {
     virtual void compute_shell(int, int);
     virtual void compute_shell_reg(double, int, int);
     virtual void compute_shell_erf(double, int, int);
+    virtual void compute_shell_erfgau(double, int, int);
+
     /// Computes the integrals between basis function in the given shell pair
     virtual void compute_shell_deriv1(int, int);
     /// Computes the integrals between basis function in the given shell pair
