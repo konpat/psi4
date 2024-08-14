@@ -620,6 +620,7 @@ void OneBodyAOInt::compute_erfgau(double omega, std::vector<SharedMatrix> &resul
         // For each integral that we got put in its contribution
         for (int r = 0; r < nchunk_; ++r) {
             const double *location = buffers_[r];
+            outfile->Printf("result r %d %12.8f\n",r,*location);
             for (int p = 0; p < ni; ++p) {
                 for (int q = 0; q < nj; ++q) {
                     result[r]->add(0, i_offset + p, j_offset + q, *location);

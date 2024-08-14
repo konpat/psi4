@@ -29,6 +29,14 @@
 
 #include <libint2/boys.h>
 
+#include "psi4/libpsi4util/PsiOutStream.h"
+#include "psi4/libciomr/libciomr.h"
+#include "psi4/psifiles.h"
+#include "psi4/libpsi4util/libpsi4util.h"
+#include "psi4/libpsi4util/process.h"
+#include "psi4/liboptions/liboptions.h"
+
+
 namespace mdintegrals {
 
 std::vector<std::array<int, 3>> generate_am_components_cca(int am) {
@@ -401,15 +409,17 @@ void fill_R_matrix_erf(int maxam, double p, double omega, const Point& PC, std::
 }
 
 
-void fill_R_matrix_erfgau(int maxam, double p, double omega, const Point& PC, std::vector<double>& R, double u, const Point& AB) {
+void fill_R_matrix_erfgau(int maxam, double p, double omega, const Point& PC, std::vector<double>& R, double u, const Point& AB, double q) {
     // Generates the auxiliary integrals for Coulomb-type integrals using eq 9.9.13
     // from Molecular Electronic-Structure Theory (10.1002/9781119019572)
 
     //auto PC = point_diff(P, C);
     auto RPC = point_norm(PC); 
     auto RAB = point_norm(AB);
+    double onethird = 1.0/3.0;
+    double twothirds = 2.0/3.0;
 
-    double exponent = (-2 / 3 * p * omega * omega) / (p + 1 / 3 * omega * omega);
+    double exponent = (-twothirds * p * omega * omega) / (p + onethird * omega * omega);
 
     int dim1 = maxam + 1;
     int dim2 = dim1 * dim1 * dim1;
@@ -417,7 +427,8 @@ void fill_R_matrix_erfgau(int maxam, double p, double omega, const Point& PC, st
     // only zero out the required part of the buffer for performance
     std::fill(R.begin(), R.begin() + dim1 * dim2, 0.0);
  
-    R[0] = pow(p / (p + 1/3 * omega * omega) , 1.5) * pow(M_PI / p, 1.5) * exp(-u * RAB * RAB) * exp(-1/3 * p * omega * omega * RPC * RPC / (p + 1/3 * omega * omega));
+    //R[0] = pow(p / (p + onethird * omega * omega) , 1.5) * pow(4.0 * q / (p * p), 0.75) * exp(-u * RAB * RAB) * exp(-onethird * p * omega * omega * RPC * RPC / (p + onethird * omega * omega));
+    R[0] = pow(p / (p + onethird * omega * omega) , 1.5) * pow(4.0 * q / (p * p), 0.75) * exp(-onethird * p * omega * omega * RPC * RPC / (p + onethird * omega * omega));
 
     // t + u + v <= N
     // t = 0, u = 0

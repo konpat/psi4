@@ -705,10 +705,12 @@ void MultipolePotentialInt_erfgau::compute_pair_erfgau(double omega, const libin
             double cb = s2.contr[0].coeff[p2];
 
             double p = a + b;
+            double q = a * b;
             Point P{(a * A[0] + b * B[0]) / p, (a * A[1] + b * B[1]) / p, (a * A[2] + b * B[2]) / p};
             double u = a * b / (a + b);
             Point AB{A[0] - B[0], A[1] - B[1], A[2] - B[2]};
-            double prefac = 2.0 * M_PI * ca * cb / p;
+            //double prefac = 2.0 * M_PI * ca * cb / p;
+            double prefac = ca * cb;
 
             fill_E_matrix(am1, am2, P, A, B, a, b, Ex, Ey, Ez);
 
@@ -725,7 +727,9 @@ void MultipolePotentialInt_erfgau::compute_pair_erfgau(double omega, const libin
           //    outfile->Printf("Z, P_C[0], P_C[1], P_C[2] = %12.6f %12.6f %12.6f %12.6f \n",Z,P_C[0], P_C[1], P_C[2]);
                 Point PC{P_C[0],P_C[1],P_C[2]};
 
-                fill_R_matrix_erfgau(r_am, p, omega, PC, R, u, AB);
+                outfile->Printf("omega multipolepot. : %12.8f",omega);
+                fill_R_matrix_erfgau(r_am, p, omega, PC, R, u, AB, q);
+                outfile->Printf("R[0] %12.8f",R[0]);
     
     
                 int der_count = 0;
@@ -764,14 +768,15 @@ void MultipolePotentialInt_erfgau::compute_pair_erfgau(double omega, const libin
                                             // eq 9.9.32 (using eq 9.9.27)
                                             val += Ex_p[t] * Ey_p[u] * Ez_p[v] *
                                                    R[address_3d(t + ex, u + ey, v + ez, rdim1, rdim1)];
-                                            outfile->Printf("address R val %d %12.6f %12.6f \n",address_3d(t + ex, u + ey, v + ez, rdim1, rdim1),R[address_3d(t + ex, u + ey, v + ez, rdim1, rdim1)],val); 
+//                                            outfile->Printf("address R val %d %12.6f %12.6f \n",address_3d(t + ex, u + ey, v + ez, rdim1, rdim1),R[address_3d(t + ex, u + ey, v + ez, rdim1, rdim1)],val); 
                                         }
                                     }
                                 }
-                                buffer_[ao12 + size * der_count] += sign_prefac * val * -Z;
+                            //  buffer_[ao12 + size * der_count] += sign_prefac * val * -Z;
+                                buffer_[ao12 + size * der_count] += sign_prefac * val;
                                 ++ao12;
                              //   if (!(Z == 0)) {
-                             //       outfile->Printf("buffer_[ao12 + size * der_count]   %12.6f\n", buffer_[ao12 + size * der_count]);
+                                    outfile->Printf("buffer_[ao12 + size * der_count]   %12.6f\n", buffer_[ao12 + size * der_count]);
                              //   }
                             }
                         }
@@ -788,6 +793,7 @@ void MultipolePotentialInt_erfgau::compute_pair_erfgau(double omega, const libin
     pure_transform(s1, s2, cumulative_cart_dim(order_));
     for (int chunk = 0; chunk < cumulative_cart_dim(order_); ++chunk) {
         buffers_[chunk] = buffer_ + chunk * s1.size() * s2.size();
+        outfile->Printf("Still in compute_pair %12.8f\n",buffers_[chunk][0]);
     }
 
 }
