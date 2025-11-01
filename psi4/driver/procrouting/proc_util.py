@@ -35,6 +35,7 @@ from .. import p4util
 from ..constants import constants
 from ..p4util.exceptions import *
 from .dft import build_superfunctional_from_dictionary, functionals
+from .. import qcdb
 
 
 def scf_set_reference_local(name, is_dft=False):
@@ -244,6 +245,9 @@ def prepare_sapt_molecule(sapt_dimer: core.Molecule, sapt_basis: str) -> Tuple[c
         ghosts = ([2, 3], [1, 3])
     elif nfrag == 2:
         # Classical dimer case
+        if sapt_basis == 'mc+bs':
+            raise ValidationError("SAPT calculation with MC+BS needs a third, midbond fragment.")
+
         ghosts = (2, 1)
     else:
         raise ValidationError('SAPT requires active molecule to have 2 fragments, not %s.' % (nfrag))
@@ -257,6 +261,29 @@ def prepare_sapt_molecule(sapt_dimer: core.Molecule, sapt_basis: str) -> Tuple[c
         monomerA = sapt_dimer.extract_subsets(1)
         monomerA.set_name('monomerA')
         monomerB = sapt_dimer.extract_subsets(2)
+        monomerB.set_name('monomerB')
+    elif sapt_basis == 'mc+bs':
+# First, since we will be automagically modifying the basis sets, we need to make sure that all atoms have unique labels.
+# If they don't have unique labels yet, we add the atom number to each.
+        atom_labels = []
+	unique_labels = True
+        for n in range(sapt_dimer.natom()):
+            this_atom = sapt_dimer.label(n)
+            if this_atom in atom_labels:
+                unique_labels = False
+                break
+            else:
+                atom_labels.append(this_atom)
+        if not(unique_labels):
+# Changing the atom labels is easier to accomplish with qcdb.Molecule than with psi4.core.Molecule.
+            sapt_dimer_qcdb = qcdb.Molecule.from_dict(sapt_dimer.to_dict())
+            for n in range(sapt_dimer_qcdb.natom()):
+                sapt_dimer_qcdb.full_atoms[n].PYlabel += str(n+1)
+            sapt_dimer = core.Molecule.from_dict(sapt_dimer_qcdb.to_dict())
+# With this improved molecule, we extract subsets like for the dimer. The basis set adjustment will be handled later.
+        monomerA = sapt_dimer.extract_subsets(1, ghosts[0])
+        monomerA.set_name('monomerA')
+        monomerB = sapt_dimer.extract_subsets(2, ghosts[1])
         monomerB.set_name('monomerB')
     else:
         raise ValidationError("SAPT basis %s not recognized" % sapt_basis)
