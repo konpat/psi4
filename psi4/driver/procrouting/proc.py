@@ -1584,6 +1584,7 @@ def scf_helper(name, post_scf=True, **kwargs):
     read_orbitals = core.get_option('SCF', 'GUESS') == "READ"
     do_timer = kwargs.pop("do_timer", True)
     ref_wfn = kwargs.pop('ref_wfn', None)
+    sapt_basis = kwargs.get('sapt_basis', 'dimer')
     if ref_wfn is not None:
         raise ValidationError("Cannot seed an SCF calculation with a reference wavefunction ('ref_wfn' kwarg).")
 
@@ -1761,6 +1762,25 @@ def scf_helper(name, post_scf=True, **kwargs):
         core.print_out('\n')
 
     # the SECOND scf call
+    if sapt_basis == "mc+bs":
+# in this place, we need to know if we are running AB, A, or B. Let's deduce it from the fragments in the molecule.
+        fragtypes = scf_molecule.get_fragment_types()
+        if fragtypes[0] == 'Real' and fragtypes[1] == 'Real':
+            scf_frag = 0 # dimer
+        elif fragtypes[0] == 'Real' and fragtypes[1] == 'Ghost':
+            scf_frag = 1 # monomer A
+        elif fragtypes[0] == 'Ghost' and fragtypes[1] == 'Real':
+            scf_frag = 2 # monomer B
+        else:
+            raise ValidationError("Wrong fragment status (Real/Ghost) for SAPT/MC+BS.")
+# KONRAD basis set trimming goes here
+        if scf_frag > 0: # dimer uses full basis, nothing to trim
+            angmom_max = kwargs.get('ANGMOM_MC+BS', (2,1,-1))
+            scf_molecule_qcdb = qcdb.Molecule.from_dict(scf_molecule.to_dict())
+            bs, bs_dict = qcdb.BasisSet.pyconstruct(scf_molecule_qcdb, "BASIS", core.get_global_option('BASIS'), return_dict=True)
+            monA_dict = bs_dict.copy()
+            dimbas = bs_dict['shell_map']
+
     base_wfn = core.Wavefunction.build(scf_molecule, core.get_global_option('BASIS'))
     if banner:
         core.print_out("\n         ---------------------------------------------------------\n")
@@ -4628,7 +4648,8 @@ def run_sapt(name, **kwargs):
         core.print_out('Warning! SAPT argument "ref_wfn" is only able to use molecule information.')
         sapt_dimer = ref_wfn.molecule()
 
-    sapt_basis = kwargs.pop('sapt_basis', 'dimer')
+    # We don't do kwargs.pop() anymore because scf_helper needs to know about MC+BS.
+    sapt_basis = kwargs.get('sapt_basis', 'dimer')
 
     sapt_dimer, monomerA, monomerB = proc_util.prepare_sapt_molecule(sapt_dimer, sapt_basis)
 
